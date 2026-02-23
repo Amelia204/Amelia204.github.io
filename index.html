@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ureshii Nihongo - Belajar Bahasa Jepang</title>
+    <!-- Tailwind CSS untuk Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti untuk efek kembang api -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* slate-950 */
+            color: #f1f5f9; /* slate-100 */
+            overflow-x: hidden;
+        }
+
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+        .perspective-1000 { perspective: 1000px; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .shadow-neon-blue { box-shadow: 0 0 30px rgba(37, 99, 235, 0.4); }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 20px; border: 2px solid #020617; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .animate-pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center relative">
+
+    <!-- Container Utama Aplikasi -->
+    <div id="app" class="w-full flex justify-center p-4"></div>
+
+    <!-- Modal Tutorial -->
+    <div id="tutorial-modal" class="hidden fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="bg-gray-900 border-2 border-blue-500/50 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl">
+            <div class="bg-blue-600 p-6 flex items-center gap-3">
+                <i data-lucide="help-circle" class="text-white w-8 h-8"></i>
+                <h2 class="text-2xl font-black text-white uppercase italic tracking-tight">Cara Belajar di Sini</h2>
+            </div>
+            <div class="p-8 space-y-8 overflow-y-auto max-h-[60vh] custom-scrollbar text-left">
+                <section>
+                    <h3 class="text-blue-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic">
+                        <span class="bg-blue-500/20 text-blue-400 w-8 h-8 rounded-full flex items-center justify-center not-italic">1</span> Mulai dengan Flashcard
+                    </h3>
+                    <div class="pl-10 text-gray-300 space-y-2 text-sm">
+                        <p class="font-bold text-white leading-tight">Belum hafal kosakata? Jangan khawatir!</p>
+                        <ul class="list-disc list-inside">
+                            <li>Pilih kategori kosakata.</li>
+                            <li>Klik fitur <span class="text-blue-400 font-bold uppercase text-white">Flashcard</span>.</li>
+                            <li>Ketuk kartu untuk melihat arti, dan dengarkan suaranya.</li>
+                        </ul>
+                    </div>
+                </section>
+                <section>
+                    <h3 class="text-purple-400 font-black text-lg uppercase flex items-center gap-2 mb-2 italic">
+                        <span class="bg-purple-500/20 text-purple-400 w-8 h-8 rounded-full flex items-center justify-center not-italic">2</span> Uji Kemampuanmu
+                    </h3>
+                    <div class="pl-10 text-gray-300">
+                        <p class="text-sm leading-relaxed text-white">Sudah merasa faham? Yuk, tes ingatanmu dengan mengerjakan <span class="text-purple-400 font-bold uppercase text-white">Kuis</span> 10 soal acak.</p>
+                    </div>
+                </section>
+            </div>
+            <div class="p-6 bg-gray-800/50 border-t border-white/5">
+                <button onclick="closeTutorial()" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-white shadow-neon-blue hover:bg-blue-500 transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+                    <i data-lucide="check" class="w-5 h-5"></i> Paham & Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+
+// --- UTILITAS ---
+const speakJapanese = (text) => {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 0.85;
+        window.speechSynthesis.speak(utterance);
+    }
+};
+
+function shuffleArray(array) {
+    if (!array || !Array.isArray(array)) return [];
+    const newArr = [...array];
+    for (let i = newArr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+    }
+    return newArr;
+}
+
+// --- DATABASE KOSAKATA ---
+const VOCAB_DATA = {
+  'Percakapan Dasar': {
+    'Salam, Sapaan, dan Ungkapan': [
+  { word: 'おはよう', translation: 'Selamat pagi (frank)', example: 'おはよう、ともだち。', exTrans: 'Selamat pagi, teman.' },
+  { word: 'おはようございます', translation: 'Selamat pagi', example: 'せんせい、おはようございます。', exTrans: 'Selamat pagi, Guru.' },
+  { word: 'こんにちは', translation: 'Selamat siang / Halo', example: 'みなさん、こんにちは。', exTrans: 'Halo semuanya.' },
+  { word: 'こんばんは', translation: 'Selamat malam', example: 'こんばんは、おとうさん。', exTrans: 'Selamat malam, Ayah.' },
+  { word: 'おやすみなさい', translation: 'Selamat tidur', example: 'もうねます、おやすみなさい。', exTrans: 'Sudah mau tidur, selamat tidur.' },
+  { word: 'さようなら', translation: 'Sampai jumpa lagi', example: 'さようなら、またいつか。', exTrans: 'Sampai jumpa lagi suatu saat nanti.' },
+  { word: 'では', translation: 'Permisi / Kalau begitu (saat berpisah)', example: 'では、しつれいします。', exTrans: 'Kalau begitu, saya permisi.' },
+  { word: 'じゃあ / じゃ', translation: 'Kalau begitu (saat berpisah)', example: 'じゃ、またね。', exTrans: 'Kalau begitu, sampai nanti ya.' },
+  { word: 'じゃあ、また', translation: 'Sampai ketemu lagi', example: 'じゃあ、またあとで。', exTrans: 'Sampai ketemu lagi nanti.' },
+  { word: 'じゃあ、またあした', translation: 'Baiklah, sampai besok', example: 'たのしかったです。じゃあ、またあした。', exTrans: 'Sangat menyenangkan. Baiklah, sampai besok.' },
+  { word: 'いってきます', translation: 'Saya berangkat ya', example: 'がっこうへいってきます。', exTrans: 'Saya berangkat ke sekolah ya.' },
+  { word: 'いってらっしゃい', translation: 'Selamat jalan', example: 'きをつけて、いってらっしゃい。', exTrans: 'Hati-hati, selamat jalan.' },
+  { word: 'ただいま', translation: 'Saya sudah pulang', example: 'ただいま、おなかがすいた。', exTrans: 'Saya sudah pulang, lapar nih.' },
+  { word: 'おかえり / おかえりなさい', translation: 'Selamat pulang', example: 'おかえりなさい、おにいさん。', exTrans: 'Selamat pulang, Kak.' },
+  { word: 'ごめんください', translation: 'Permisi (di depan rumah orang)', example: 'ごめんください、だれかいますか。', exTrans: 'Permisi, apakah ada orang?' },
+  { word: 'おじゃまします', translation: 'Permisi (saat masuk rumah orang)', example: 'おじゃまします、きれいなへやですね。', exTrans: 'Permisi, kamarnya bersih ya.' },
+  { word: 'いらっしゃい / いらっしゃいませ', translation: 'Selamat datang', example: 'いらっしゃいませ、なにがいいですか。', exTrans: 'Selamat datang, ingin pesan apa?' },
+  { word: 'ようこそ', translation: 'Selamat datang (umum)', example: 'にほんへようこそ。', exTrans: 'Selamat datang di Jepang.' },
+  { word: 'いただきます', translation: 'Selamat makan', example: 'おいしそう！いただきます。', exTrans: 'Kelihatannya enak! Selamat makan.' },
+  { word: 'ごちそうさま / ごちそうさまでした', translation: 'Terima kasih atas hidangannya', example: 'おなかいっぱいです。ごちそうさまでした。', exTrans: 'Sudah kenyang. Terima kasih atas hidangannya.' },
+  { word: 'はじめまして', translation: 'Salam kenal (awal perkenalan)', example: 'はじめまして、わたしはありです。', exTrans: 'Salam kenal, saya adalah Ari.' },
+  { word: 'どうぞ、よろしくおねがいします', translation: 'Mohon bantuannya (akhir perkenalan)', example: 'にほんごをならいます。どうぞよろしく。', exTrans: 'Saya belajar bahasa Jepang. Mohon bantuannya.' },
+  { word: 'ありがとう / ありがとうございます', translation: 'Terima kasih', example: 'てつだってくれて、ありがとう。', exTrans: 'Terima kasih sudah membantu.' },
+  { word: 'どういたしまして', translation: 'Terima kasih kembali', example: 'いいえ、どういたしまして。', exTrans: 'Sama-sama, terima kasih kembali.' },
+  { word: 'こちらこそ', translation: 'Saya yang terima kasih', example: 'いいえ、こちらこそありがとう。', exTrans: 'Tidak, saya yang harusnya berterima kasih.' },
+  { word: 'すみません', translation: 'Maaf / Permisi', example: 'すみません、いまなんじですか。', exTrans: 'Permisi, sekarang jam berapa?' },
+  { word: 'ごめんなさい / ごめん', translation: 'Minta maaf', example: 'おそくなって、ごめんなさい。', exTrans: 'Maaf karena terlambat.' },
+  { word: 'もしもし', translation: 'Halo (telepon pribadi)', example: 'もしもし、たなかさんですか。', exTrans: 'Halo, apakah ini Pak Tanaka?' },
+  { word: 'おげんきですか', translation: 'Apa kabar?', example: 'おひさしぶりです、おげんきですか。', exTrans: 'Sudah lama tidak bertemu, apa kabar?' },
+  { word: 'おかげさまで', translation: 'Baik berkat bantuan Anda', example: 'おかげさまで、げんきです。', exTrans: 'Berkat doa Anda, saya sehat.' },
+  { word: 'おだいじに', translation: 'Jaga kesehatan / GWS', example: 'かぜですか。おだいじに。', exTrans: 'Sedang flu ya? Jaga kesehatan dengan baik.' },
+  { word: 'ひさしぶり', translation: 'Sudah lama tidak bertemu', example: 'ひさしぶり！げんきだった？', exTrans: 'Sudah lama tidak bertemu! Apa kabar?' }
+],
+    'Frasa Sehari-hari': [
+  { word: 'よろしいですか', translation: 'Tidak ada masalah? / Okekah?', example: 'これで、よろしいですか。', exTrans: 'Apakah dengan ini tidak ada masalah?' },
+  { word: 'どうぞ', translation: 'Silakan', example: 'どうぞ、おはいりください。', exTrans: 'Silakan, silakan masuk.' },
+  { word: 'けっこうです', translation: 'Tidak perlu', example: 'いいえ、けっこうです。', exTrans: 'Tidak, tidak perlu.' },
+  { word: 'そうしましょう', translation: 'Baiklah, mari kita lakukan itu', example: 'いっしょにかえりましょう。そうしましょう。', exTrans: 'Mari pulang bersama. Baiklah, mari kita lakukan itu.' },
+  { word: 'そうですか', translation: 'Begitu ya / Oh, begitu', example: 'あしたはやすみです。そうですか。', exTrans: 'Besok libur. Oh, begitu ya.' },
+  { word: 'そうですね', translation: 'Iya ya', example: 'きょうはあついですね。そうですね。', exTrans: 'Hari ini panas ya. Iya ya.' },
+  { word: 'しつれいですが、おなまえは', translation: 'Permisi, siapa nama Anda?', example: 'しつれいですが、おなまえはなんですか。', exTrans: 'Permisi, siapa nama Anda?' },
+  { word: '～をください', translation: 'Minta (Kata Benda)', example: 'みずをください。', exTrans: 'Minta air putih.' },
+  { word: 'おしえてください', translation: 'Tolong ajarkan / beri tahu', example: 'ばんごうをおしえてください。', exTrans: 'Tolong beri tahu nomornya.' },
+  { word: 'いくらですか', translation: 'Berapa harganya?', example: 'これはいっかついくらですか。', exTrans: 'Ini satunya berapa harganya?' },
+  { word: 'おめでとう / おめでとうございます', translation: 'Selamat', example: 'たんじょうびおめでとう！', exTrans: 'Selamat ulang tahun!' },
+  { word: 'ざんねんですね', translation: 'Sayang ya', example: 'パーティーにいきません。ざんねんですね。', exTrans: 'Tidak pergi ke pesta. Sayang ya.' },
+  { word: 'ざんねんですが、～', translation: 'Sayangnya, ~', example: 'ざんねんですが、いけません。', exTrans: 'Sayangnya, saya tidak bisa pergi.' },
+  { word: 'よかったら、～', translation: 'Kalau tidak keberatan', example: 'よかったら、あそびにきてね。', exTrans: 'Kalau tidak keberatan, main ke sini ya.' }
+],
+    'Kata Seru': [
+  { word: 'ああ', translation: 'Ahh. / Aduh.', example: 'ああ、そうですか。', exTrans: 'Ahh, begitu ya.' },
+  { word: 'ええと', translation: 'Hmm. / Apa ya..', example: 'ええと、わかりません。', exTrans: 'Hmm, saya tidak tahu.' },
+  { word: 'あのう', translation: 'Permisi..', example: 'あのう、すみません。', exTrans: 'Anoo, permisi.' },
+  { word: 'さあ', translation: 'Mari / Apa ya / Kurang tahu deh.', example: 'さあ、いきましょう。', exTrans: 'Mari, ayo pergi.' },
+  { word: 'へえ', translation: 'Ohh.', example: 'へえ、すごいですね。', exTrans: 'Ohh, hebat ya.' },
+  { word: 'いいえ / いえ', translation: 'Tidak. / Bukan.', example: 'いいえ、ちがいます。', exTrans: 'Tidak, bukan begitu.' },
+  { word: 'うーん', translation: 'Hum.', example: 'うーん、むずかしいですね。', exTrans: 'Hum, sulit ya.' },
+  { word: 'え / えっ', translation: 'Eh. / Masa.', example: 'えっ！本当ですか。', exTrans: 'Eh! Benarkah?' },
+  { word: 'あれ？', translation: 'Lho / Kok?', example: 'あれ？かぎがない。', exTrans: 'Lho? Kuncinya tidak ada.' },
+  { word: 'はい / ええ', translation: 'Ya.', example: 'はい、わかりました。', exTrans: 'Ya, saya mengerti.' },
+  { word: 'そうです', translation: 'Betul.', example: 'はい、そうです。', exTrans: 'Ya, betul.' },
+  { word: 'ちがいます', translation: 'Bukan.', example: 'いいえ、ちがいます。', exTrans: 'Tidak, bukan/salah.' }
+],
+  },
+  'Kata Benda': {
+    'angka': [
+    { word: 'ぜろ / れい', translation: 'Nol', example: 'ぜろから。', exTrans: 'Dari nol.' },
+    { word: 'いち', translation: 'Satu', example: 'いっちばん。', exTrans: 'Nomor satu.' },
+    { word: 'に', translation: 'Dua', example: 'にじ。', exTrans: 'Jam dua.' },
+    { word: 'さん', translation: 'Tiga', example: 'さんげつ。', exTrans: 'Tiga bulan.' },
+    { word: 'し / よん', translation: 'Empat', example: 'よにん。', exTrans: 'Empat orang.' },
+    { word: 'ご', translation: 'Lima', example: 'ごえん。', exTrans: 'Lima yen.' },
+    { word: 'ろく', translation: 'Enam', example: 'ろくじ。', exTrans: 'Jam enam.' },
+    { word: 'しち / なな', translation: 'Tujuh', example: 'ななさい。', exTrans: 'Tujuh tahun.' },
+    { word: 'はち', translation: 'Delapan', example: 'はちじ。', exTrans: 'Jam delapan.' },
+    { word: 'きゅう / く', translation: 'Sembilan', example: 'くじ。', exTrans: 'Jam sembilan.' },
+    { word: 'じゅう', translation: 'Sepuluh', example: 'じゅうえん。', exTrans: 'Sepuluh yen.' },
+    { word: 'じゅういち', translation: 'Sebelas', example: 'じゅういちにち。', exTrans: 'Tanggal sebelas.' },
+    { word: 'ひゃく', translation: 'Seratus', example: 'ひゃくえん。', exTrans: 'Seratus yen.' },
+    { word: 'せん', translation: 'Seribu', example: 'にせんえん。', exTrans: 'Dua ribu yen.' },
+    { word: 'まん', translation: 'Sepuluh ribu', example: 'いちまんえん。', exTrans: 'Sepuluh ribu yen.' },
+    { word: 'おく', translation: '100 juta', example: 'いちおくえん。', exTrans: 'Seratus juta yen.' },
+    { word: 'ひとつ', translation: 'Satu, satu buah, usia satu tahun', example: 'ひとつください。', exTrans: 'Minta satu buah.' },
+    { word: 'ふたつ', translation: 'Dua, dua buah, usia dua tahun', example: 'ふたつあります。', exTrans: 'Ada dua buah.' },
+    { word: 'みっつ', translation: 'Tiga, tiga buah, usia tiga tahun', example: 'みっつ。', exTrans: 'Tiga buah.' },
+    { word: 'よっつ', translation: 'Empat, empat buah, usia empat tahun', example: 'よっつ。', exTrans: 'Empat buah.' },
+    { word: 'いつつ', translation: 'Lima, lima buah, usia lima tahun', example: 'いつつ。', exTrans: 'Lima buah.' },
+    { word: 'むっつ', translation: 'Enam, enam buah, usia enam tahun', example: 'むっつ。', exTrans: 'Enam buah.' },
+    { word: 'ななつ', translation: 'Tujuh, tujuh buah, usia tujuh tahun', example: 'ななつ。', exTrans: 'Tujuh buah.' },
+    { word: 'やっつ', translation: 'Delapan, delapan buah, usia delapan tahun', example: 'やっつ。', exTrans: 'Delapan buah.' },
+    { word: 'ここのつ', translation: 'Sembilan, sembilan buah, usia sembilan tahun', example: 'ここのつ。', exTrans: 'Sembilan buah.' },
+    { word: 'とお', translation: 'Sepuluh', example: 'とお。', exTrans: 'Sepuluh buah.' },
+    { word: 'ばんごう', translation: 'Nomor', example: 'ばんごうをおしえて。', exTrans: 'Beritahu nomornya.' },
+    { word: 'ぜんぶ', translation: 'Semua', example: 'ぜんぶでいくら？', exTrans: 'Total semuanya berapa?' },
+    { word: 'はんぶん', translation: 'Setengah', example: 'はんぶんたべます。', exTrans: 'Makan setengahnya.' },
+    { word: 'たくさん', translation: 'Banyak', example: 'たくさんあります。', exTrans: 'Ada banyak.' },
+    { word: 'おおぜい', translation: 'Banyak (untuk orang)', example: 'ひとがおおぜいいます。', exTrans: 'Ada banyak orang.' },
+  ],
+    'Waktu': [
+      { word: 'じかん', translation: 'waktu', example: 'じかんがあります。', exTrans: 'Ada waktu.' },
+  { word: 'ひ', translation: 'hari / matahari', example: 'いいひですね。', exTrans: 'Hari yang baik ya.' },
+  { word: 'しゅう', translation: 'minggu', example: 'こんしゅう。', exTrans: 'Minggu ini.' },
+  { word: 'つき', translation: 'bulan', example: 'つきがきれい。', exTrans: 'Bulannya indah.' },
+  { word: 'とし', translation: 'tahun / usia', example: 'いいとし。', exTrans: 'Tahun yang baik.' },
+  { word: '～がつ', translation: 'bulan ~', example: 'なんがつですか？', exTrans: 'Bulan apa?' },
+  { word: 'いちがつ', translation: 'Januari', example: 'いちがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Januari.' },
+  { word: 'にがつ', translation: 'Februari', example: 'にがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Februari.' },
+  { word: 'さんがつ', translation: 'Maret', example: 'さんがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Maret.' },
+  { word: 'しがつ', translation: 'April', example: 'しがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan April.' },
+  { word: 'ごがつ', translation: 'Mei', example: 'ごがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Mei.' },
+  { word: 'ろくがつ', translation: 'Juni', example: 'ろくがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Juni.' },
+  { word: 'しちがつ', translation: 'Juli', example: 'しちがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Juli.' },
+  { word: 'はちがつ', translation: 'Agustus', example: 'はちがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Agustus.' },
+  { word: 'くがつ', translation: 'September', example: 'くがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan September.' },
+  { word: 'じゅうがつ', translation: 'Oktober', example: 'じゅうがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Oktober.' },
+  { word: 'じゅういちがつ', translation: 'November', example: 'じゅういちがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan November.' },
+  { word: 'じゅうにがつ', translation: 'Desember', example: 'じゅうにがつににほんへいきます。', exTrans: 'Pergi ke Jepang pada bulan Desember.' },
+  { word: 'なんがつ', translation: 'bulan apa', example: 'いま、なんがつ？', exTrans: 'Sekarang bulan apa?' },
+  { word: 'ついたち', translation: 'tanggal satu', example: 'ついたちはやすみです。', exTrans: 'Tanggal satu adalah hari libur.' },
+  { word: 'ふつか', translation: 'tanggal dua', example: 'ふつかにおわります。', exTrans: 'Selesai pada tanggal dua.' },
+  { word: 'みっか', translation: 'tanggal tiga', example: 'みっかまちます。', exTrans: 'Menunggu tiga hari (hingga tanggal tiga).' },
+  { word: 'よっか', translation: 'tanggal empat', example: 'よっかにあそぶ。', exTrans: 'Bermain pada tanggal empat.' },
+  { word: 'いつか', translation: 'tanggal lima', example: 'いつかのかいぎ。', exTrans: 'Rapat tanggal lima.' },
+  { word: 'むいか', translation: 'tanggal enam', example: 'むいかにかえります。', exTrans: 'Pulang pada tanggal enam.' },
+  { word: 'なのか', translation: 'tanggal tujuh', example: 'なのかなので。', exTrans: 'Karena tanggal tujuh.' },
+  { word: 'ようか', translation: 'tanggal delapan', example: 'ようかですね。', exTrans: 'Tanggal delapan ya.' },
+  { word: 'ここのか', translation: 'tanggal sembilan', example: 'ここのかに。', exTrans: 'Pada tanggal sembilan.' },
+  { word: 'とおか', translation: 'tanggal sepuluh', example: 'とおかはやすみです。', exTrans: 'Tanggal sepuluh adalah hari libur.' },
+  { word: 'はつか', translation: 'tanggal dua puluh', example: 'はつかまで。', exTrans: 'Sampai tanggal dua puluh.' },
+  { word: '～にち', translation: 'tanggal ~', example: 'じゅういちにち。', exTrans: 'Tanggal sebelas.' },
+  { word: 'なんにち', translation: 'tanggal berapa', example: 'なんにちですか？', exTrans: 'Tanggal berapa?' },
+  { word: 'ようび', translation: 'hari', example: 'なにようび？', exTrans: 'Hari apa?' },
+  { word: 'げつようび', translation: 'hari Senin', example: 'きょうはげつようびです。', exTrans: 'Hari ini adalah hari Senin.' },
+  { word: 'かようび', translation: 'hari Selasa', example: 'きょうはかようびです。', exTrans: 'Hari ini adalah hari Selasa.' },
+  { word: 'すいようび', translation: 'hari Rabu', example: 'きょうはすいようびです。', exTrans: 'Hari ini adalah hari Rabu.' },
+  { word: 'もくようび', translation: 'hari Kamis', example: 'きょうはもくようびです。', exTrans: 'Hari ini adalah hari Kamis.' },
+  { word: 'きんようび', translation: 'hari Jumat', example: 'きょうはきんようびです。', exTrans: 'Hari ini adalah hari Jumat.' },
+  { word: 'どようび', translation: 'hari Sabtu', example: 'きょうはどようびです。', exTrans: 'Hari ini adalah hari Sabtu.' },
+  { word: 'にちようび', translation: 'hari Minggu', example: 'きょうはにちようびです。', exTrans: 'Hari ini adalah hari Minggu.' },
+  { word: 'なんようび', translation: 'hari apa', example: 'きょうはなんようび？', exTrans: 'Hari ini hari apa?' },
+  { word: 'しゅうまつ', translation: 'akhir pekan', example: 'いいしゅうまつを。', exTrans: 'Selamat berakhir pekan.' },
+  { word: '～ふん/ぷん', translation: 'menit', example: 'ごふん。', exTrans: 'Lima menit.' },
+  { word: '～じ', translation: 'jam ~', example: 'いま、さんじ。', exTrans: 'Sekarang jam tiga.' },
+  { word: 'ごぜん', translation: 'pagi hari (A.M)', example: 'ごぜんきゅうじ。', exTrans: 'Jam 9 pagi.' },
+  { word: 'ごご', translation: 'siang hari (P.M)', example: 'ごごさんじ。', exTrans: 'Jam 3 siang.' },
+  { word: 'きょう', translation: 'hari ini', example: 'きょうはいいてんきです。', exTrans: 'Hari ini cuacanya bagus.' },
+  { word: 'あした', translation: 'besok', example: 'あしたあいましょう。', exTrans: 'Ayo bertemu besok.' },
+  { word: 'あさって', translation: 'lusa', example: 'あさってきます。', exTrans: 'Datang lusa.' },
+  { word: 'きのう', translation: 'kemarin', example: 'きのうたべました。', exTrans: 'Makan kemarin.' },
+  { word: 'おととい', translation: 'dua hari yang lalu', example: 'おとといのばん。', exTrans: 'Malam dua hari yang lalu.' },
+  { word: 'こんしゅう', translation: 'minggu ini', example: 'こんしゅうはいそがしい。', exTrans: 'Minggu ini sibuk.' },
+  { word: 'らいしゅう', translation: 'minggu depan', example: 'らいしゅうに。', exTrans: 'Pada minggu depan.' },
+  { word: 'せんしゅう', translation: 'minggu lalu', example: 'せんしゅういきました。', exTrans: 'Pergi minggu lalu.' },
+  { word: 'こんげつ', translation: 'bulan ini', example: 'こんげつおわる。', exTrans: 'Selesai bulan ini.' },
+  { word: 'らいげつ', translation: 'bulan depan', example: 'らいげつから。', exTrans: 'Mulai bulan depan.' },
+  { word: 'ことし', translation: 'tahun ini', example: 'ことしもよろしく。', exTrans: 'Mohon bantuannya juga tahun ini.' },
+  { word: 'らいねん', translation: 'tahun depan', example: 'らいねんはいきます。', exTrans: 'Tahun depan akan pergi.' },
+  { word: 'きょねん', translation: 'tahun lalu', example: 'きょねんきました。', exTrans: 'Datang tahun lalu.' },
+  { word: 'あさ', translation: 'pagi', example: 'あさごはん。', exTrans: 'Makan pagi.' },
+  { word: 'ひる', translation: 'siang', example: 'ひるごはん。', exTrans: 'Makan siang.' },
+  { word: 'ばん', translation: 'malam', example: 'ばんごはん。', exTrans: 'Makan malam.' },
+  { word: 'ゆうがた', translation: 'sore', example: 'ゆうがたのかぜ。', exTrans: 'Angin sore hari.' },
+  { word: 'よる', translation: 'malam', example: 'よるになります。', exTrans: 'Menjadi malam.' },
+  { word: 'けさ', translation: 'pagi ini', example: 'けさはやい。', exTrans: 'Pagi ini masih awal.' },
+  { word: 'こんばん', translation: 'malam ini', example: 'こんばんあおう。', exTrans: 'Ayo bertemu malam ini.' },
+  { word: 'いま', translation: 'sekarang', example: 'いま、なんじ？', exTrans: 'Sekarang jam berapa?' },
+  { word: 'つぎ', translation: 'selanjutnya', example: 'つぎのひと。', exTrans: 'Orang selanjutnya.' },
+  { word: 'きせつ', translation: 'musim', example: 'どのきせつがすき？', exTrans: 'Musim mana yang kamu suka?' },
+  { word: 'はる', translation: 'musim semi', example: 'はるがきた。', exTrans: 'Musim semi telah tiba.' },
+  { word: 'なつ', translation: 'musim panas', example: 'なつはあつい。', exTrans: 'Musim panas itu panas.' },
+  { word: 'あき', translation: 'musim gugur', example: 'あきですね。', exTrans: 'Musim gugur ya.' },
+  { word: 'ふゆ', translation: 'musim dingin', example: 'ふゆはさむい。', exTrans: 'Musim dingin itu dingin.' },
+  { word: 'なつやすみ', translation: 'libur musim panas', example: 'なつやすみはたのしい。', exTrans: 'Libur musim panas itu menyenangkan.' },
+  { word: 'まいにち', translation: 'setiap hari', example: 'まいにちべんきょうします。', exTrans: 'Belajar setiap hari.' },
+  { word: 'まいとし', translation: 'setiap tahun', example: 'まいとしにほんへいく。', exTrans: 'Setiap tahun pergi ke Jepang.' }
+],
+    'Sekolah dan Kelas': [
+      { word: 'がっこう', translation: 'sekolah', example: 'がっこうへいきます。', exTrans: 'Pergi ke sekolah.' },
+  { word: 'がくせい', translation: 'pelajar', example: 'わたしはがくせいです。', exTrans: 'Saya adalah pelajar.' },
+  { word: 'せいと', translation: 'murid', example: 'せいとがいます。', exTrans: 'Ada murid.' },
+  { word: 'せんせい', translation: 'guru / dosen', example: 'やさしいせんせい。', exTrans: 'Guru yang baik hati.' },
+  { word: '～ねんせい', translation: 'siswa tingkat ~', example: 'いちねんせいです。', exTrans: 'Siswa tingkat satu.' },
+  { word: 'だいがく', translation: 'universitas', example: 'だいがくでべんきょうする。', exTrans: 'Belajar di universitas.' },
+  { word: 'だいがくせい', translation: 'mahasiswa', example: 'あねはだいがくせいです。', exTrans: 'Kakak perempuan saya mahasiswa.' },
+  { word: 'りゅうがくせい', translation: 'pelajar asing', example: 'りゅうがくせいにあう。', exTrans: 'Bertemu pelajar asing.' },
+  { word: 'としょかん', translation: 'perpustakaan', example: 'としょかんでほんをよむ。', exTrans: 'Membaca buku di perpustakaan.' },
+  { word: 'きょうしつ', translation: 'ruang kelas', example: 'きょうしつにはいります。', exTrans: 'Masuk ke ruang kelas.' },
+  { word: 'じゅぎょう', translation: 'pelajaran / kelas', example: 'じゅぎょうがはじまる。', exTrans: 'Pelajaran dimulai.' },
+  { word: 'くらす', translation: 'kelas', example: 'あかるいくらす。', exTrans: 'Kelas yang ceria.' },
+  { word: 'べんきょう', translation: 'pelajaran', example: 'にほんごをべんきょうします。', exTrans: 'Belajar bahasa Jepang.' },
+  { word: 'えんぴつ', translation: 'pensil', example: 'えんぴつでかきます。', exTrans: 'Menulis dengan pensil.' },
+  { word: 'ぺん', translation: 'pen', example: 'ぺんをかしてください。', exTrans: 'Tolong pinjamkan pen.' },
+  { word: 'ぼーるぺん', translation: 'bolpoin', example: 'このぼーるぺん。', exTrans: 'Bolpoin ini.' },
+  { word: 'まんねんひつ', translation: 'pulpen', example: 'まんねんひつをもつ。', exTrans: 'Mempunyai pulpen.' },
+  { word: 'かみ', translation: 'kertas', example: 'かみをください。', exTrans: 'Minta kertas.' },
+  { word: 'のーと', translation: 'buku tulis', example: 'のーとをかう。', exTrans: 'Membeli buku tulis.' },
+  { word: 'ぺーじ', translation: 'halaman', example: 'じゅうぺーじをみて。', exTrans: 'Lihat halaman sepuluh.' },
+  { word: 'じしょ', translation: 'kamus', example: 'じしょをひく。', exTrans: 'Membuka kamus.' },
+  { word: 'ちず', translation: 'peta', example: 'ちずをみましょう。', exTrans: 'Mari melihat peta.' },
+  { word: 'もんだい', translation: 'soal', example: 'むずかしいもんだい。', exTrans: 'Soal yang sulit.' },
+  { word: 'れんしゅう', description: 'pelatihan', example: 'れんしゅうをします。', exTrans: 'Melakukan latihan.' },
+  { word: 'しつもん', translation: 'pertanyaan', example: 'しつもんがあります。', exTrans: 'Ada pertanyaan.' },
+  { word: 'てすと', translation: 'tes', example: 'てすとがあります。', exTrans: 'Ada tes.' },
+  { word: 'こたえ', translation: 'jawaban', example: 'こたえをかく。', exTrans: 'Menulis jawaban.' },
+  { word: 'こたえかた', translation: 'cara menjawab', example: 'こたえかたを教える。', exTrans: 'Mengajarkan cara menjawab.' },
+  { word: 'しゅくだい', translation: 'pekerjaan rumah', example: 'しゅくだいがおおい。', exTrans: 'PR-nya banyak.' },
+  { word: 'ひらがな', translation: 'huruf hiragana', example: 'ひらがなをよむ。', exTrans: 'Membaca hiragana.' },
+  { word: 'かたかな', translation: 'huruf katakana', example: 'かたかなをかく。', exTrans: 'Menulis katakana.' },
+  { word: 'ろーまじ', translation: 'romaji', example: 'ろーまじでかく。', exTrans: 'Menulis dengan romaji.' },
+  { word: 'かんじ', translation: 'kanji', example: 'かんじをべんきょうする。', exTrans: 'Belajar kanji.' },
+  { word: 'ふりがな', translation: 'furigana', example: 'ふりがながある。', exTrans: 'Ada furigana.' },
+  { word: 'ことば', translation: 'bahasa / kata', example: 'あたらしいことば。', exTrans: 'Kata baru.' },
+  { word: 'いみ', translation: 'arti', example: 'このことばのいみ。', exTrans: 'Arti kata ini.' },
+  { word: 'れい', translation: 'contoh', example: 'れいをみる。', exTrans: 'Melihat contoh.' },
+  { word: 'ぶん', translation: 'kalimat', example: 'みじかいぶん。', exTrans: 'Kalimat yang pendek.' },
+  { word: 'ぶんしょう', translation: 'tulisan / paragraf', example: 'ぶんしょうをよむ。', exTrans: 'Membaca tulisan.' },
+  { word: 'さくぶん', translation: 'karangan', example: 'さくぶんをかく。', exTrans: 'Menulis karangan.' },
+  { word: 'めも', translation: 'catatan', example: 'めもをとる。', exTrans: 'Mencatat.' },
+  { word: 'てきすと', translation: 'buku teks', example: 'てきすとをあける。', exTrans: 'Membuka buku teks.' },
+  { word: 'こぴー', translation: 'fotokopi', example: 'こぴーをします。', exTrans: 'Melakukan fotokopi.' },
+  { word: 'もんだいようし', translation: 'lembar soal ujian', example: 'もんだいようしをくばる。', exTrans: 'Membagikan lembar soal.' },
+  { word: 'かいとうようし', translation: 'lembar jawaban', example: 'かいとうようしをだす。', exTrans: 'Mengumpulkan lembar jawaban.' },
+  { word: 'もんだいれい', translation: 'contoh soal', example: 'もんだいれいをみる。', exTrans: 'Melihat contoh soal.' },
+  { word: 'やすみ', translation: 'libur / istirahat', example: 'やすみです。', exTrans: 'Sedang libur.' }
+],
+    'Orang dan Keluarga': [
+  { word: 'わたし', translation: 'saya', example: 'わたしは がくせいです。', exTrans: 'Saya adalah siswa.' },
+  { word: 'わたしたち', translation: 'kita, kami', example: 'わたしたちは ともだちです。', exTrans: 'Kami adalah teman.' },
+  { word: 'あなた', translation: 'Anda', example: 'あなたは せんせいですか。', exTrans: 'Apakah Anda seorang guru?' },
+  { word: 'あなたたち', translation: 'Anda sekalian', example: 'あなたたちは どこに いきますか。', exTrans: 'Anda sekalian mau pergi ke mana?' },
+  { word: 'かれ', translation: 'dia (laki-laki)', example: 'かれは わたしの おとうとです。', exTrans: 'Dia adalah adik laki-laki saya.' },
+  { word: 'かのじょ', translation: 'dia (perempuan)', example: 'かのじょは とても しんせつです。', exTrans: 'Dia sangat baik hati.' },
+  { word: 'かれら', translation: 'mereka (laki-laki)', example: 'かれらは さっかーを しています。', exTrans: 'Mereka sedang bermain sepak bola.' },
+  { word: 'かのじょら', translation: 'mereka (perempuan)', example: 'かのじょらは べんきょうしています。', exTrans: 'Mereka sedang belajar.' },
+  { word: 'みなさん', translation: 'semuanya (halus)', example: 'みなさん、こんにちは。', exTrans: 'Halo semuanya.' },
+  { word: 'ひと', translation: 'orang', example: 'あのひとは だれですか。', exTrans: 'Orang itu siapa?' },
+  { word: 'おとな', translation: 'dewasa', example: 'おとなは せんえんです。', exTrans: 'Untuk dewasa harganya 1000 yen.' },
+  { word: 'こども', translation: 'anak', example: 'こどもが あそんでいます。', exTrans: 'Anak-anak sedang bermain.' },
+  { word: 'おとこのひと', translation: 'pria', example: 'せが たかい おとこのひと。', exTrans: 'Pria yang bertubuh tinggi.' },
+  { word: 'おんなのひと', translation: 'wanita', example: 'きれいな おんなのひと。', exTrans: 'Wanita yang cantik.' },
+  { word: 'おとこのこ', translation: 'anak laki-laki', example: 'あかるい おとこのこ。', exTrans: 'Anak laki-laki yang ceria.' },
+  { word: 'おんなのこ', translation: 'anak perempuan', example: 'かわいい おんなのこ。', exTrans: 'Anak perempuan yang imut.' },
+  { word: 'ともだち', translation: 'teman', example: 'ともだちと えいがを みます。', exTrans: 'Menonton film bersama teman.' },
+  { word: 'かぞく', translation: 'keluarga', example: 'かぞくは よにんです。', exTrans: 'Keluarga saya ada empat orang.' },
+  { word: 'ちち', translation: 'ayah saya', example: 'ちちは かいしゃいんです。', exTrans: 'Ayah saya adalah karyawan kantor.' },
+  { word: 'はは', translation: 'ibu saya', example: 'ははは りょうりが じょうずです。', exTrans: 'Ibu saya pandai memasak.' },
+  { word: 'あに', translation: 'kakak laki-laki saya', example: 'あには きょうとに すんでいます。', exTrans: 'Kakak laki-laki saya tinggal di Kyoto.' },
+  { word: 'あね', translation: 'kakak perempuan saya', example: 'あねは かんごしです。', exTrans: 'Kakak perempuan saya adalah perawat.' },
+  { word: 'おとうと', translation: 'adik laki-laki saya', example: 'おとうとは じゅうさいです。', exTrans: 'Adik laki-laki saya berumur 10 tahun.' },
+  { word: 'いもうと', translation: 'adik perempuan saya', example: 'いもうとは ほんが すきです。', exTrans: 'Adik perempuan saya suka buku.' },
+  { word: 'きょうだい', translation: 'saudara / saudara laki-laki', example: 'きょうだいが いますか。', exTrans: 'Apakah punya saudara?' },
+  { word: 'おとうさん', translation: 'ayah (orang lain/panggilan)', example: 'おとうさんは おげんきですか。', exTrans: 'Apakah Ayah Anda sehat?' },
+  { word: 'おかあさん', translation: 'ibu (orang lain/panggilan)', example: 'おかあさんに あいたいです。', exTrans: 'Ingin bertemu Ibu.' },
+  { word: 'おにいさん', translation: 'kakak laki-laki', example: 'おにいさんは なんさいですか。', exTrans: 'Kakak laki-laki Anda umur berapa?' },
+  { word: 'おねえさん', translation: 'kakak perempuan', example: 'おねえさんは どこですか。', exTrans: 'Kakak perempuan Anda di mana?' },
+  { word: 'じぶん', translation: 'diri sendiri', example: 'じぶんで つくりました。', exTrans: 'Membuat sendiri.' },
+  { word: 'ぼく', translation: 'aku (laki-laki)', example: 'ぼくは たなかです。', exTrans: 'Aku Tanaka.' },
+  { word: 'なまえ', translation: 'nama', example: 'おなまえは なんですか。', exTrans: 'Siapa nama Anda?' },
+  { word: 'がいこくじん', translation: 'orang asing', example: 'あそこは がいこくじんが おおいです。', exTrans: 'Di sana banyak orang asing.' }
+],
+    'Negara, Daerah, dan Asal': [
+  { word: 'くに', translation: 'negara', example: 'おくにに かえります。', exTrans: 'Pulang ke negara asal.' },
+  { word: 'がいこく', translation: 'luar negeri', example: 'がいこくへ いきたいです。', exTrans: 'Ingin pergi ke luar negeri.' },
+  { word: 'にほん', translation: 'Jepang', example: 'にほんの たべものが すきです。', exTrans: 'Suka makanan Jepang.' },
+  { word: 'あめりか', translation: 'Amerika', example: 'あめりかから きました。', exTrans: 'Datang dari Amerika.' },
+  { word: 'あじあ', translation: 'Asia', example: 'あじあの くに。', exTrans: 'Negara Asia.' },
+  { word: 'よーろっぱ', translation: 'Eropa', example: 'よーろっぱに すんでいます。', exTrans: 'Tinggal di Eropa.' },
+  { word: 'あふりか', translation: 'Afrika', example: 'あふりかは とおいです。', exTrans: 'Afrika itu jauh.' },
+  { word: 'ちゅうごく', translation: 'China', example: 'ちゅうごくごを べんきょうします。', exTrans: 'Belajar bahasa China.' },
+  { word: 'かんこく', translation: 'Korea Selatan', example: 'かんこくの ドラマ。', exTrans: 'Drama Korea.' },
+  { word: 'べとなむ', translation: 'Vietnam', example: 'べとなむへ いきました。', exTrans: 'Sudah pergi ke Vietnam.' },
+  { word: 'たい', translation: 'Thailand', example: 'たいは あついです。', exTrans: 'Thailand panas.' },
+  { word: 'いぎりす', translation: 'Inggris', example: 'いぎりすの ひと。', exTrans: 'Orang Inggris.' },
+  { word: 'どいつ', translation: 'Jerman', example: 'どいつの くるま。', exTrans: 'Mobil Jerman.' },
+  { word: 'ぎりしゃ', translation: 'Yunani', example: 'ぎりしゃの れきし。', exTrans: 'Sejarah Yunani.' },
+  { word: 'えじぷと', translation: 'Mesir', example: 'えじぷとの ぴらみっど。', exTrans: 'Piramida Mesir.' },
+  { word: 'とうきょう', translation: 'Tokyo', example: 'とうきょうは にぎやかです。', exTrans: 'Tokyo ramai.' },
+  { word: 'きょうと', translation: 'Kyoto', example: 'きょうとは しずかです。', exTrans: 'Kyoto tenang.' },
+  { word: 'おおさか', translation: 'Osaka', example: 'おおさかの たべもの。', exTrans: 'Makanan Osaka.' },
+  { word: 'ほっかいどう', translation: 'Hokkaido', example: 'ほっかいどうは さむいです。', exTrans: 'Hokkaido dingin.' },
+  { word: 'おきなわ', translation: 'Okinawa', example: 'おきなわの うみ。', exTrans: 'Laut Okinawa.' },
+  { word: 'しゅっしん', translation: 'tempat kelahiran', example: 'しゅっしんは どこですか。', exTrans: 'Tempat lahirnya di mana?' },
+  { word: 'むら', translation: 'desa', example: 'しずかな むら。', exTrans: 'Desa yang tenang.' },
+  { word: 'えいご', translation: 'bahasa Inggris', example: 'えいごを はなします。', exTrans: 'Berbicara bahasa Inggris.' },
+  { word: 'にほんご', translation: 'bahasa Jepang', example: 'にほんごを べんきょうします。', exTrans: 'Belajar bahasa Jepang.' }
+],
+    'Alam dan Cuaca': [
+  { word: 'やま', translation: 'gunung', example: 'ふじさんにのぼる。', exTrans: 'Mendaki gunung Fuji.' },
+  { word: 'かわ', translation: 'sungai', example: 'かわでおよぐ。', exTrans: 'Berenang di sungai.' },
+  { word: 'うみ', translation: 'laut', example: 'うみがきれい。', exTrans: 'Lautnya indah.' },
+  { word: 'いけ', translation: 'kolam', example: 'いけにさかながいます。', exTrans: 'Ada ikan di kolam.' },
+  { word: 'そら', translation: 'langit', example: 'そらをみる。', exTrans: 'Melihat langit.' },
+  { word: 'くも', translation: 'awan', example: 'しろいくも。', exTrans: 'Awan putih.' },
+  { word: 'たいよう', translation: 'matahari', example: 'たいようがあかるい。', exTrans: 'Matahari sangat terang.' },
+  { word: 'つき', translation: 'bulan', example: 'こんやはつきがきれい。', exTrans: 'Malam ini bulannya indah.' },
+  { word: 'ほし', translation: 'bintang', example: 'ほしがいっぱい。', exTrans: 'Banyak bintang (bertaburan).' },
+  { word: 'いし', translation: 'batu', example: 'ちいさいいし。', exTrans: 'Batu yang kecil.' },
+  { word: 'すな', translation: 'pasir', example: 'すなであそぶ。', exTrans: 'Bermain pasir.' },
+  { word: 'きん', translation: 'emas', example: 'きんのゆびわ。', exTrans: 'Cincin emas.' },
+  { word: 'ひ', translation: 'api', example: 'ひをつけてください。', exTrans: 'Tolong nyalakan apinya.' },
+  { word: 'き', translation: 'pohon', example: 'きの下でやすむ。', exTrans: 'Istirahat di bawah pohon.' },
+  { word: 'みどり', translation: 'hijau / alam', example: 'みどりがおおい。', exTrans: 'Banyak pemandangan hijau (tumbuhan).' },
+  { word: 'てんき', translation: 'cuaca', example: 'きょうのてんき。', exTrans: 'Cuaca hari ini.' },
+  { word: 'はれ', translation: 'cerah', example: 'あしたははれです。', exTrans: 'Besok cerah.' },
+  { word: 'あめ', translation: 'hujan', example: 'あめがふっています。', exTrans: 'Sedang turun hujan.' },
+  { word: 'くもり', translation: 'mendung', example: 'きょうはくもりです。', exTrans: 'Hari ini mendung.' },
+  { word: 'ゆき', translation: 'salju', example: 'ゆきがふります。', exTrans: 'Turun salju.' },
+  { word: 'かぜ', translation: 'angin', example: 'かぜがつよい。', exTrans: 'Anginnya kencang.' }
+],
+    'Binatang dan Tumbuhan': [
+  { word: 'どうぶつ', translation: 'binatang', example: 'どうぶつえんに いきます。', exTrans: 'Pergi ke kebun binatang.' },
+  { word: 'いぬ', translation: 'anjing', example: 'いぬが ほえています。', exTrans: 'Anjing sedang menggonggong.' },
+  { word: 'ねこ', translation: 'kucing', example: 'ねこを かっています。', exTrans: 'Memelihara kucing.' },
+  { word: 'とり', translation: 'burung', example: 'とりが とんでいます。', exTrans: 'Burung sedang terbang.' },
+  { word: 'ぺっと', translation: 'binatang peliharaan', example: 'ぺっとが ほしいです。', exTrans: 'Ingin binatang peliharaan.' },
+  { word: 'うし', translation: 'sapi', example: 'うしが くさを たべています。', exTrans: 'Sapi sedang makan rumput.' },
+  { word: 'うま', translation: 'kuda', example: 'うまに のります。', exTrans: 'Naik kuda.' },
+  { word: 'ぶた', translation: 'babi', example: 'ぶたは まるいです。', exTrans: 'Babi itu gemuk/bulat.' },
+  { word: 'さかな', translation: 'ikan', example: 'さかなを つります。', exTrans: 'Memancing ikan.' },
+  { word: 'むし', translation: 'serangga', example: 'ちいさい むし。', exTrans: 'Serangga yang kecil.' },
+  { word: 'はな', translation: 'bunga', example: 'はなが さきました。', exTrans: 'Bunga sudah mekar.' }
+],
+    'Makanan dan Minuman': [
+  { word: 'たべもの', translation: 'makanan', example: 'たべものがすき。', exTrans: 'Suka makanan.' },
+  { word: 'にく', translation: 'daging', example: 'にくをたべます。', exTrans: 'Makan daging.' },
+  { word: 'ぶたにく', translation: 'daging babi', example: 'ぶたにくはたべません。', exTrans: 'Tidak makan daging babi.' },
+  { word: 'とりにく', translation: 'daging ayam', example: 'とりにくがおいしい。', exTrans: 'Daging ayam enak.' },
+  { word: 'ぎゅうにく', translation: 'daging sapi', example: 'ぎゅうにくだいすき。', exTrans: 'Sangat suka daging sapi.' },
+  { word: 'たまご', translation: 'telur', example: 'たまごをかいます。', exTrans: 'Membeli telur.' },
+  { word: 'やさい', translation: 'sayur-sayuran', example: 'やさいをたべてね。', exTrans: 'Makan sayur ya.' },
+  { word: 'とまと', translation: 'tomat', example: 'あかいとまと。', exTrans: 'Tomat yang merah.' },
+  { word: 'くだもの', translation: 'buah-buahan', example: 'くだものがほしい。', exTrans: 'Ingin buah-buahan.' },
+  { word: 'りんご', translation: 'apel', example: 'りんごをひとつ。', exTrans: 'Satu buah apel.' },
+  { word: 'いちご', translation: 'stroberi', example: 'いちごはあまい。', exTrans: 'Stroberi itu manis.' },
+  { word: 'ばなな', translation: 'pisang', example: 'ばななをたべよう。', exTrans: 'Ayo makan pisang.' },
+  { word: 'すいか', translation: 'semangka', example: 'すいかはみずみずしい。', exTrans: 'Semangka itu segar.' },
+  { word: 'りょうり', translation: 'masakan', example: 'りょうりがじょうず。', exTrans: 'Pintar memasak.' },
+  { word: 'にほんりょうり', translation: 'masakan jepang', example: 'にほんりょうりがすき。', exTrans: 'Suka masakan Jepang.' },
+  { word: 'ごはん', translation: 'nasi / makan', example: 'ごはんをたべた？', exTrans: 'Sudah makan nasi?' },
+  { word: 'ぱん', translation: 'roti', example: 'ぱんをかいました。', exTrans: 'Sudah membeli roti.' },
+  { word: 'らーめん', translation: 'ramen', example: 'らーめんをたべたい。', exTrans: 'Ingin makan ramen.' },
+  { word: 'かれー', translation: 'kari', example: 'かれーはからい。', exTrans: 'Kari itu pedas.' },
+  { word: 'すし', translation: 'sushi', example: 'いっしょにすしをたべる。', exTrans: 'Makan sushi bersama.' },
+  { word: 'とうふ', translation: 'tahu', example: 'とうふがすき。', exTrans: 'Suka tahu.' },
+  { word: 'おにぎり', translation: 'onigiri', example: 'おにぎりをひとつください。', exTrans: 'Minta satu onigiri.' },
+  { word: 'おべんとう', translation: 'bekal makanan', example: 'おべんとうをつくる。', exTrans: 'Membuat bekal makanan.' },
+  { word: 'おかし', translation: 'kue / camilan', example: 'おかしをたべすぎた。', exTrans: 'Terlalu banyak makan camilan.' },
+  { word: 'あいすくりーむ', translation: 'es krim', example: 'あいすくりーむをたべよう。', exTrans: 'Ayo makan es krim.' },
+  { word: 'けーき', translation: 'cake', example: 'おいしいけーき。', exTrans: 'Kue yang enak.' },
+  { word: 'あめ', translation: 'permen', example: 'あめをあげる。', exTrans: 'Memberi permen.' },
+  { word: 'さとう', translation: 'gula', example: 'さとうをいれます。', exTrans: 'Memasukkan gula.' },
+  { word: 'しお', translation: 'garam', example: 'しおがたりない。', exTrans: 'Kurang garam.' },
+  { word: 'しょうゆ', translation: 'kecap asin', example: 'しょうゆをかけます。', exTrans: 'Menuangkan kecap asin.' },
+  { word: 'ばたー', translation: 'mentega', example: 'ぱんにばたーをぬる。', exTrans: 'Mengoles mentega ke roti.' },
+  { word: 'あぶら', translation: 'minyak', example: 'あぶらっこい。', exTrans: 'Berminyak.' },
+  { word: 'あさごはん', translation: 'makan pagi', example: 'あさごはんをたべよう。', exTrans: 'Ayo makan pagi.' },
+  { word: 'ひるごはん', translation: 'makan siang', example: 'ひるごはんはなに？', exTrans: 'Makan siangnya apa?' },
+  { word: 'ばんごはん', translation: 'makan malam', example: 'ばんごはんをつくる。', exTrans: 'Membuat makan malam.' },
+  { word: 'ゆうしょく', translation: 'makan malam', example: 'ゆうしょくのじかん。', exTrans: 'Waktunya makan malam.' },
+  { word: 'のみもの', translation: 'minuman', example: 'のみものをください。', exTrans: 'Minta minuman.' },
+  { word: 'こーひー', translation: 'kopi', example: 'こーひーをのむ。', exTrans: 'Minum kopi.' },
+  { word: 'こーちゃ', translation: 'teh', example: 'あついこーちゃ。', exTrans: 'Teh panas.' },
+  { word: 'あいす', translation: 'es', example: 'あいすをいれる。', exTrans: 'Memasukkan es.' },
+  { word: 'あいすこーひー', translation: 'es kopi', example: 'あいすこーひーがおいしい。', exTrans: 'Es kopi itu enak.' },
+  { word: 'あいすてぃー', translation: 'es teh', example: 'あいすてぃーをのみます。', exTrans: 'Minum es teh.' },
+  { word: 'おちゃ', translation: 'teh hijau', example: 'おちゃをのみましょう。', exTrans: 'Mari minum teh hijau.' },
+  { word: 'みず', translation: 'air putih', example: 'みずをください。', exTrans: 'Minta air putih.' },
+  { word: 'ぎゅうにゅう', translation: 'susu', example: 'ぎゅうにゅうをのむ。', exTrans: 'Minum susu.' },
+  { word: 'みるく', translation: 'susu', example: 'みるくをいれますか？', exTrans: 'Apakah ingin dimasukkan susu?' },
+  { word: 'じゅーす', translation: 'jus', example: 'おれんじじゅーす。', exTrans: 'Jus jeruk.' },
+  { word: 'おさけ', translation: 'sake / alkohol', example: 'おさけにわふ。', exTrans: 'Mabuk alkohol.' },
+  { word: 'たばこ', translation: 'rokok', example: 'たばこをすう。', exTrans: 'Merokok.' },
+  { word: 'はし', translation: 'sumpit', example: 'はしをつかう。', exTrans: 'Menggunakan sumpit.' },
+  { word: 'ちゃわん', translation: 'mangkuk', example: 'ちゃわんをあらう。', exTrans: 'Mencuci mangkuk.' },
+  { word: 'おさら', translation: 'piring', example: 'おさらをだす。', exTrans: 'Mengeluarkan piring.' },
+  { word: 'ふぉーく', translation: 'garpu', example: 'ふぉーくをください。', exTrans: 'Minta garpu.' },
+  { word: 'ないふ', translation: 'pisau', example: 'ないふで切る。', exTrans: 'Memotong dengan pisau.' },
+  { word: 'すぷーん', translation: 'sendok', example: 'すぷーんでたべる。', exTrans: 'Makan dengan sendok.' },
+  { word: 'こっぷ', translation: 'gelas', example: 'こっぷにみずをいれる。', exTrans: 'Mengisi gelas dengan air.' },
+  { word: 'かっぷ', translation: 'cangkir', example: 'てぃーかっぷ。', exTrans: 'Cangkir teh.' }
+],
+    'Tubuh, Perasaan, dan Kondisi': [
+  { word: 'からだ', translation: 'tubuh', example: 'からだに きをつけてください。', exTrans: 'Tolong jaga kesehatan tubuh Anda.' },
+  { word: 'あたま', translation: 'kepala', example: 'あたまが いたいです。', exTrans: 'Kepala saya sakit.' },
+  { word: 'かお', translation: 'muka', example: 'かおを あらいます。', exTrans: 'Mencuci muka.' },
+  { word: 'め', translation: 'mata', example: 'めが おおきいですね。', exTrans: 'Matanya besar ya.' },
+  { word: 'はな', translation: 'hidung', example: 'はなが たかいです。', exTrans: 'Hidungnya mancung.' },
+  { word: 'みみ', translation: 'telinga', example: 'みみで おとを ききます。', exTrans: 'Mendengar suara dengan telinga.' },
+  { word: 'くち', translation: 'mulut', example: 'くちに たべものを いれます。', exTrans: 'Memasukkan makanan ke mulut.' },
+  { word: 'は', translation: 'gigi', example: 'はを みがきます。', exTrans: 'Menggosok gigi.' },
+  { word: 'て', translation: 'tangan', example: 'てを あげてください。', exTrans: 'Tolong angkat tangan.' },
+  { word: 'あし', translation: 'kaki', example: 'あしが ながいです。', exTrans: 'Kakinya panjang.' },
+  { word: 'おなか', translation: 'perut', example: 'おなかが すきました。', exTrans: 'Perut sudah lapar.' },
+  { word: 'せ', translation: 'punggung / tinggi badan', example: 'せが たかいです。', exTrans: 'Badannya tinggi.' },
+  { word: 'びょうき', translation: 'penyakit', example: 'びょうきに なりました。', exTrans: 'Sudah jatuh sakit.' },
+  { word: 'かぜ', translation: 'flu / masuk angin', example: 'かぜを ひきました。', exTrans: 'Sudah terkena flu.' },
+  { word: 'くすり', translation: 'obat', example: 'くすりを のみます。', exTrans: 'Minum obat.' },
+  { word: 'げんき', translation: 'sehat / semangat', example: 'いつも げんきです。', exTrans: 'Selalu sehat/bersemangat.' },
+  { word: 'こえ', translation: 'suara', example: 'おおきい こえで はなします。', exTrans: 'Berbicara dengan suara besar/keras.' }
+],
+    'Rumah dan Barang': [
+  { word: 'いえ', translation: 'rumah', example: 'あたらし いえに すんでいます。', exTrans: 'Tinggal di rumah baru.' },
+  { word: 'うち', translation: 'rumah (kami)/keluarga', example: 'うちに あそびに きてください。', exTrans: 'Silakan datang bermain ke rumah kami.' },
+  { word: 'にわ', translation: 'halaman', example: 'にわに はなが あります。', exTrans: 'Di halaman ada bunga.' },
+  { word: 'へや', translation: 'kamar', example: 'へやを そうじします。', exTrans: 'Membersihkan kamar.' },
+  { word: 'だいどころ', translation: 'dapur', example: 'だいどころで りょうりします。', exTrans: 'Memasak di dapur.' },
+  { word: 'といれ / おてあらい', translation: 'toilet', example: 'おてあらいは どこですか。', exTrans: 'Toilet ada di mana?' },
+  { word: 'おふろ', translation: 'kamar mandi air panas', example: 'おふろに はいります。', exTrans: 'Masuk ke kamar mandi (mandi).' },
+  { word: 'しゃわー', translation: 'shower', example: 'しゃわーを あびます。', exTrans: 'Mandi menggunakan shower.' },
+  { word: 'げんかん', translation: 'ruang pintu masuk', example: 'げんかんで くつを ぬぎます。', exTrans: 'Melepas sepatu di pintu masuk.' },
+  { word: 'ろーか', translation: 'lorong', example: 'ろーかを あるきます。', exTrans: 'Berjalan di lorong.' },
+  { word: 'と / どあ', translation: 'pintu', example: 'どあを あけてください。', exTrans: 'Tolong buka pintunya.' },
+  { word: 'もん', translation: 'gerbang', example: 'もんを しめます。', exTrans: 'Menutup gerbang.' },
+  { word: 'まど', translation: 'jendela', example: 'まどを ふきます。', exTrans: 'Menyeka/membersihkan jendela.' },
+  { word: 'かぎ', translation: 'kunci', example: 'へやの かぎを かけます。', exTrans: 'Mengunci kunci kamar.' },
+  { word: 'つくえ', translation: 'meja', example: 'つくえの うえに ほんが あります。', exTrans: 'Di atas meja ada buku.' },
+  { word: 'いす', translation: 'kursi', example: 'いすに すわってください。', exTrans: 'Silakan duduk di kursi.' },
+  { word: 'てーぶる', translation: 'meja', example: 'てーぶるの うえに おちゃが あります。', exTrans: 'Di atas meja ada teh.' },
+  { word: 'ほんだな', translation: 'rak buku', example: 'ほんだなに ほんを もどします。', exTrans: 'Mengembalikan buku ke rak buku.' },
+  { word: 'べっど', translation: 'ranjang', example: 'べっどで ねます。', exTrans: 'Tidur di ranjang.' },
+  { word: 'はこ', translation: 'kotak', example: 'はこの なかに いれます。', exTrans: 'Memasukkan ke dalam kotak.' },
+  { word: 'かびん', translation: 'vas', example: 'かびんに はなを かざります。', exTrans: 'Menghias bunga di vas.' },
+  { word: 'かれんだー', translation: 'kalender', example: 'かれんだーを みます。', exTrans: 'Melihat kalender.' },
+  { word: 'まっち', translation: 'korek api', example: 'まっちを つかいます。', exTrans: 'Menggunakan korek api.' },
+  { word: 'はいざら', translation: 'asbak', example: 'はいざらをおいてください。', exTrans: 'Tolong letakkan asbak.' },
+  { word: 'すりっぱ', translation: 'selop', example: 'すりっぱを はきます。', exTrans: 'Memakai selop.' },
+  { word: 'せっけん', translation: 'sabun', example: 'せっけんで てを あらいます。', exTrans: 'Mencuci tangan dengan sabun.' },
+  { word: 'といれっとぺーぱー', translation: 'tisu toilet', example: 'といれっとぺーぱーを かいます。', exTrans: 'Membeli tisu toilet.' },
+  { word: 'えあこん', translation: 'AC', example: 'えあこんを つけます。', exTrans: 'Menyalakan AC.' },
+  { word: 'すとーぶ', translation: 'alat pemanas', example: 'すとーぶが あついです。', exTrans: 'Alat pemanasnya panas.' },
+  { word: 'れいぞうこ', translation: 'kulkas', example: 'れいぞうこに びーるが あります。', exTrans: 'Di kulkas ada bir.' },
+  { word: 'せんたくき', translation: 'mesin cuci', example: 'せんたくきが こわれました。', exTrans: 'Mesin cucinya rusak.' },
+  { word: 'せんたくもの', translation: 'cucian', example: 'せんたくものを ほします。', exTrans: 'Menjemur cucian.' },
+  { word: 'そうじき', translation: 'penyedot debu', example: 'そうじきを かけます。', exTrans: 'Menggunakan penyedot debu.' },
+  { word: 'でんわ', translation: 'telepon', example: 'でんわに でます。', exTrans: 'Mengangkat telepon.' },
+  { word: 'でんわばんごう', translation: 'nomor telepon', example: 'でんわばんごうを おしえてください。', exTrans: 'Tolong beri tahu nomor telepon Anda.' },
+  { word: 'でんき', translation: 'listrik/lampu', example: 'でんきを けします。', exTrans: 'Mematikan lampu.' },
+  { word: 'もの', translation: 'barang', example: 'へやに ものが たくさん あります。', exTrans: 'Di kamar ada banyak barang.' }
+],
+    'Pakaian dan Aksesoris': [
+  { word: 'ふく', translation: 'baju', example: 'あおい ふくを きます。', exTrans: 'Memakai baju biru.' },
+  { word: 'ようふく', translation: 'baju (gaya barat)', example: 'ようふくを かいます。', exTrans: 'Membeli baju gaya barat.' },
+  { word: 'しゃつ', translation: 'kemeja', example: 'しろい しゃつを きます。', exTrans: 'Memakai kemeja putih.' },
+  { word: 'てぃーしゃつ', translation: 'kaus oblong', example: 'てぃーしゃつを あらいます。', exTrans: 'Mencuci kaus oblong.' },
+  { word: 'わいしゃつ', translation: 'kemeja', example: 'わいしゃつを きます。', exTrans: 'Memakai kemeja.' },
+  { word: 'せびろ', translation: 'jas', example: 'せびろを きて います。', exTrans: 'Sedang memakai jas.' },
+  { word: 'ずぼん', translation: 'celana panjang', example: 'ずぼんを はきます。', exTrans: 'Memakai celana panjang.' },
+  { word: 'すかーと', translation: 'rok', example: 'みじかい すかーと。', exTrans: 'Rok yang pendek.' },
+  { word: 'せーたー', translation: 'sweater', example: 'あたたかい せーたー。', exTrans: 'Sweater yang hangat.' },
+  { word: 'こーと', translation: 'mantel', example: 'こーとを ぬぎます。', exTrans: 'Melepas mantel.' },
+  { word: 'うわぎ', translation: 'baju luar', example: 'うわぎを かけます。', exTrans: 'Menggantung baju luar.' },
+  { word: 'ねくたい', translation: 'dasi', example: 'ねくたいを しめます。', exTrans: 'Memakai dasi.' },
+  { word: 'くつ', translation: 'sepatu', example: 'あたらしい くつを はきます。', exTrans: 'Memakai sepatu baru.' },
+  { word: 'くつした', translation: 'kaus kaki', example: 'くつしたを はきかえます。', exTrans: 'Ganti kaus kaki.' },
+  { word: 'ぼうし', translation: 'topi', example: 'ぼうしを かぶります。', exTrans: 'Memakai topi.' },
+  { word: 'めがね', translation: 'kacamata', example: 'めがねを かけます。', exTrans: 'Memakai kacamata.' },
+  { word: 'ぼたん', translation: 'kancing / tombol', example: 'ぼたんを おします。', exTrans: 'Menekan tombol.' },
+  { word: 'ぽけっと', translation: 'saku', example: 'ぽけっとに てを いれます。', exTrans: 'Memasukkan tangan ke saku.' },
+  { word: 'さいふ', translation: 'dompet', example: 'さいふを なくしました。', exTrans: 'Sudah kehilangan dompet.' },
+  { word: 'はんかち', translation: 'sapu tangan', example: 'はんかちで てを ふきます。', exTrans: 'Menyeka tangan dengan sapu tangan.' },
+  { word: 'てぃっしゅ', translation: 'tisu', example: 'てぃっしゅが ありますか。', exTrans: 'Apakah ada tisu?' },
+  { word: 'かばん', translation: 'tas', example: 'かばんに ほんを いれます。', exTrans: 'Memasukkan buku ke dalam tas.' },
+  { word: 'かめら', translation: 'kamera', example: 'かめらで しゃしんを とります。', exTrans: 'Mengambil foto dengan kamera.' },
+  { word: 'かさ', translation: 'payung', example: 'あめですから、かさを さします。', exTrans: 'Karena hujan, saya memakai payung.' },
+  { word: 'とけい', translation: 'jam', example: 'いま、とけいを みます。', exTrans: 'Sekarang, melihat jam.' }
+],
+    'Pekerjaan dan Profesi': [
+  { word: 'ぎんこういん', translation: 'pegawai bank', example: 'あねは ぎんこういんです。', exTrans: 'Kakak perempuan saya adalah pegawai bank.' },
+  { word: 'かいしゃいん', translation: 'karyawan kantor', example: 'ちちは かいしゃいんです。', exTrans: 'Ayah saya adalah karyawan kantor.' },
+  { word: 'おまわりさん', translation: 'petugas polisi', example: 'あそこに おまわりさんが います。', exTrans: 'Di sana ada petugas polisi.' },
+  { word: 'きょうし', translation: 'pengajar', example: 'きょうしの しごと。', exTrans: 'Pekerjaan pengajar.' },
+  { word: 'いしゃ', translation: 'dokter', example: 'いしゃに なります。', exTrans: 'Akan menjadi dokter.' },
+  { word: 'しごと', translation: 'pekerjaan', example: 'しごとは たのしいですか。', exTrans: 'Apakah pekerjaannya menyenangkan?' }
+],
+    'Kegiatan': [
+  { word: 'すぽーつ', translation: 'Olahraga', example: 'すぽーつが だいすきです。', exTrans: 'Sangat suka olahraga.' },
+  { word: 'さっかー', translation: 'Sepak bola', example: 'さっかーを します。', exTrans: 'Bermain sepak bola.' },
+  { word: 'ごるふ', translation: 'Golf', example: 'あした ごるふに いきます。', exTrans: 'Besok pergi main golf.' },
+  { word: 'すきー', translation: 'Ski', example: 'ふゆに すきーを します。', exTrans: 'Bermain ski di musim dingin.' },
+  { word: 'だんす', translation: 'Dansa', example: 'だんすを ならいます。', exTrans: 'Belajar dansa.' },
+  { word: 'てにす', translation: 'Tenis', example: 'てにすは たのしいです。', exTrans: 'Tenis itu menyenangkan.' },
+  { word: 'ぼーる', translation: 'Bola', example: 'ぼーるを なげます。', exTrans: 'Melempar bola.' },
+  { word: 'えいが', translation: 'Film (sinema)', example: 'えいがを みに いきます。', exTrans: 'Pergi menonton film.' },
+  { word: 'ふぃるむ', translation: 'Film', example: 'カメラの ふぃるむ。', exTrans: 'Film kamera.' },
+  { word: 'おんがく', translation: 'Musik', example: 'おんがくを ききます。', exTrans: 'Mendengar musik.' },
+  { word: 'うた', translation: 'Nyanyian', example: 'きれいな うたを うたいます。', exTrans: 'Menyanyikan lagu yang indah.' },
+  { word: 'れこーど', translation: 'Piringan hitam', example: 'ふるい れこーど。', exTrans: 'Piringan hitam lama.' },
+  { word: 'ぎたー', translation: 'Gitar', example: 'ぎたーを ひきます。', exTrans: 'Memainkan gitar.' },
+  { word: 'え', translation: 'Lukisan', example: 'えを かきます。', exTrans: 'Menggambar lukisan.' },
+  { word: 'あにめ', translation: 'Anime', example: 'あにめが すきですか。', exTrans: 'Apakah suka anime?' },
+  { word: 'いけばな', translation: 'Seni merangkai bunga', example: 'いけばなを べんきょうします。', exTrans: 'Belajar seni merangkai bunga.' },
+  { word: 'さんぽ', translation: 'Jalan-jalan cari angin', example: 'こうえんを さんぽします。', exTrans: 'Jalan-jalan di taman.' },
+  { word: 'りょこう', translation: 'Jalan-jalan / Wisata', example: 'にほんを りょこうします。', exTrans: 'Berwisata ke Jepang.' },
+  { word: 'かいもの', translation: 'Belanja', example: 'デパートで かいものを します。', exTrans: 'Berbelanja di departemen store.' },
+  { word: 'せんたく', translation: 'Pencucian', example: 'きょうは せんたくを します。', exTrans: 'Hari ini mencuci baju.' },
+  { word: 'そうじ', translation: 'Pembersihan', example: 'へやを そうじします。', exTrans: 'Membersihkan kamar.' },
+  { word: 'たんじょうび', translation: 'Ulang tahun', example: 'たんじょうび おめでとう。', exTrans: 'Selamat ulang tahun.' },
+  { word: 'けっこん', translation: 'Pernikahan', example: 'けっこん おめでとう。', exTrans: 'Selamat atas pernikahannya.' },
+  { word: 'ぱーてぃー', translation: 'Pesta', example: 'ぱーてぃーに いきます。', exTrans: 'Pergi ke pesta.' },
+  { word: 'おかね', translation: 'Uang', example: 'おかねが あります。', exTrans: 'Ada uang.' },
+  { word: 'はなし', translation: 'Bicara / cerita', example: 'おもしろい はなし。', exTrans: 'Cerita yang menarik.' },
+  { word: 'あいさつ', translation: 'Salam', example: 'あいさつは たいせつです。', exTrans: 'Salam itu penting.' }
+],
+    'Kota dan Fasilitas': [
+  { word: 'まち', translation: 'kota / distrik kota', example: 'きれいな まちですね。', exTrans: 'Kota yang bersih ya.' },
+  { word: 'みせ / おみせ', translation: 'toko', example: 'あのおみせは ゆうめいです。', exTrans: 'Toko itu terkenal.' },
+  { word: 'すーぱー', translation: 'supermarket', example: 'すーぱーで かいものを します。', exTrans: 'Berbelanja di supermarket.' },
+  { word: 'でぱーと', translation: 'department store', example: 'でぱーとに いきます。', exTrans: 'Pergi ke department store.' },
+  { word: 'れすとらん', translation: 'restoran', example: 'れすとらんで たべます。', exTrans: 'Makan di restoran.' },
+  { word: 'しょくどう', translation: 'kantin', example: 'がっこうの しょくどう。', exTrans: 'Kantin sekolah.' },
+  { word: 'きっさてん', translation: 'kedai minuman', example: 'きっさてんで おちゃを のみます。', exTrans: 'Minum teh di kedai minuman.' },
+  { word: 'びょういん', translation: 'rumah sakit', example: 'びょういんに いきました。', exTrans: 'Sudah pergi ke rumah sakit.' },
+  { word: 'ほてる', translation: 'hotel', example: 'ほてるに とまります。', exTrans: 'Menginap di hotel.' },
+  { word: 'あぱーと', translation: 'kos / kamar sewa', example: 'あぱーとに すんでいます。', exTrans: 'Tinggal di apartemen/kos.' },
+  { word: 'ぎんこう', translation: 'bank', example: 'ぎんこうは くじからです。', exTrans: 'Bank buka mulai jam 9.' },
+  { word: 'こうえん', translation: 'taman', example: 'こうえんで さんぽします。', exTrans: 'Jalan-jalan di taman.' },
+  { word: 'ぷーる', translation: 'kolam renang', example: 'ぷーるで およぎます。', exTrans: 'Berenang di kolam renang.' },
+  { word: 'こうばん', translation: 'pos polisi', example: 'こうばんで みちを ききます。', exTrans: 'Bertanya jalan di pos polisi.' },
+  { word: 'たいしかん', translation: 'kedutaan besar', example: 'にほんの たいしかん。', exTrans: 'Kedutaan besar Jepang.' },
+  { word: 'えいがかん', translation: 'bioskop', example: 'えいがかんへ いきましょう。', exTrans: 'Mari pergi ke bioskop.' },
+  { word: 'かいしゃ', translation: 'perusahaan / kantor', example: 'かいしゃへ いきます。', exTrans: 'Pergi ke kantor.' },
+  { word: 'りょこうがいしゃ', translation: 'biro perjalanan', example: 'りょこうがいしゃに たのみます。', exTrans: 'Memesan di biro perjalanan.' },
+  { word: '～や', translation: 'toko ～', example: 'おもちゃや。', exTrans: 'Toko mainan.' },
+  { word: 'ほんや', translation: 'toko buku', example: 'ほんやで ほんを かいます。', exTrans: 'Membeli buku di toko buku.' },
+  { word: 'くすりや', translation: 'toko obat', example: 'くすりやに いきます。', exTrans: 'Pergi ke toko obat.' },
+  { word: 'やおや', translation: 'toko sayur', example: 'やおやで やさいを かいます。', exTrans: 'Membeli sayur di toko sayur.' },
+  { word: 'くだものや', translation: 'toko buah', example: 'くだものやの りんご。', exTrans: 'Apel dari toko buah.' },
+  { word: 'めがねや', translation: 'toko kacamata', example: 'めがねやで めがねを かいました。', exTrans: 'Sudah membeli kacamata di toko kacamata.' },
+  { word: 'すしや', translation: 'restoran sushi', example: 'すしやで たべたいです。', exTrans: 'Ingin makan di restoran sushi.' },
+  { word: 'たてもの', translation: 'bangunan', example: 'たかい たてもの。', exTrans: 'Bangunan yang tinggi.' },
+  { word: 'びる', translation: 'gedung', example: 'あそこに びるが あります。', exTrans: 'Di sana ada gedung.' },
+  { word: 'いりぐち', translation: 'pintu masuk', example: 'いりぐちは あちらです。', exTrans: 'Pintu masuk ada di sebelah sana.' },
+  { word: 'でぐち', translation: 'pintu keluar', example: 'でぐちは どこですか。', exTrans: 'Pintu keluar di mana?' },
+  { word: 'かいだん', translation: 'tangga', example: 'かいだんを のぼります。', exTrans: 'Naik tangga.' },
+  { word: 'えすかれーたー', translation: 'eskalator', example: 'えすかれーたーに のります。', exTrans: 'Naik eskalator.' },
+  { word: 'えれべーたー', translation: 'lift', example: 'えれべーたーを つかいます。', exTrans: 'Menggunakan lift.' }
+],
+    'Lalu Lintas dan Pos': [
+  { word: 'くるま', translation: 'mobil (kendaraan beroda)', example: 'あかい くるまが あります。', exTrans: 'Ada mobil merah.' },
+  { word: 'じどうしゃ', translation: 'mobil', example: 'じどうしゃに のります。', exTrans: 'Naik mobil.' },
+  { word: 'たくしー', translation: 'taksi', example: 'たくしーを よびます。', exTrans: 'Memanggil taksi.' },
+  { word: 'ばす', translation: 'bis', example: 'ばすで がっこうへ いきます。', exTrans: 'Pergi ke sekolah dengan bis.' },
+  { word: 'ばすてい', translation: 'halte', example: 'ばすていで ばすを まちます。', exTrans: 'Menunggu bis di halte.' },
+  { word: 'でんしゃ', translation: 'kereta listrik', example: 'でんしゃに おくれます。', exTrans: 'Terlambat naik kereta.' },
+  { word: 'ちかてつ', translation: 'kereta bawah tanah', example: 'ちかてつは べんりです。', exTrans: 'Kereta bawah tanah itu praktis.' },
+  { word: 'ひこうき', translation: 'pesawat terbang', example: 'ひこうきで くにへ かえります。', exTrans: 'Pulang ke negara asal dengan pesawat.' },
+  { word: 'じてんしゃ', translation: 'sepeda', example: 'あおい じてんしゃを かいました。', exTrans: 'Sudah membeli sepeda biru.' },
+  { word: 'えき', translation: 'stasiun', example: 'えきまで あるきます。', exTrans: 'Berjalan sampai stasiun.' },
+  { word: 'きっぷ', translation: 'karcis', example: 'きっぷを かいます。', exTrans: 'Membeli karcis.' },
+  { word: 'みち', translation: 'jalan', example: 'みちを わたります。', exTrans: 'Menyeberang jalan.' },
+  { word: 'しんごう', translation: 'lampu lalu lintas', example: 'しんごうが あかになりました。', exTrans: 'Lampu lalu lintas menjadi merah.' },
+  { word: 'こうさてん', translation: 'perempatan', example: 'こうさてんで まがります。', exTrans: 'Belok di perempatan.' },
+  { word: 'かど', translation: 'tikungan', example: 'かどに おみせが あります。', exTrans: 'Di tikungan ada toko.' },
+  { word: 'はし', translation: 'jembatan', example: 'はしを わたります。', exTrans: 'Menyeberang jembatan.' },
+  { word: 'ゆうびん', translation: 'pos', example: 'ゆうびんが とどきました。', exTrans: 'Pos (kiriman) sudah sampai.' },
+  { word: 'ゆうびんきょく', translation: 'kantor pos', example: 'ゆうびんきょくへ いきます。', exTrans: 'Pergi ke kantor pos.' },
+  { word: 'ぽすと', translation: 'kotak surat', example: 'ぽすとにはがきを いれます。', exTrans: 'Memasukkan kartu pos ke kotak surat.' },
+  { word: 'てがみ', translation: 'surat', example: 'てがみを かきます。', exTrans: 'Menulis surat.' },
+  { word: 'はがき', translation: 'kartu pos', example: 'はがきを だします。', exTrans: 'Mengirim kartu pos.' },
+  { word: 'きって', translation: 'perangko', example: 'きってを はります。', exTrans: 'Menempel perangko.' },
+  { word: 'ふうとう', translation: 'amplop', example: 'ふうとうに いれます。', exTrans: 'Memasukkan ke dalam amplop.' },
+  { word: 'にもつ', translation: 'barang bawaan', example: 'にもつを おくります。', exTrans: 'Mengirim barang bawaan.' }
+],
+    'Media': [
+  { word: 'しんぶん', translation: 'koran', example: 'あさ、しんぶんを よみます。', exTrans: 'Membaca koran di pagi hari.' },
+  { word: 'ざっし', translation: 'majalah', example: 'おもしろい ざっしを かいました。', exTrans: 'Sudah membeli majalah yang menarik.' },
+  { word: 'ほん', translation: 'buku', example: 'としょかんで ほんを かります。', exTrans: 'Meminjam buku di perpustakaan.' },
+  { word: 'テレビ', translation: 'televisi', example: 'テレビで アニメを みます。', exTrans: 'Menonton anime di televisi.' },
+  { word: 'ラジオ', translation: 'radio', example: 'ラジオを ききます。', exTrans: 'Mendengar radio.' },
+  { word: 'ニュース', translation: 'berita', example: 'きょうの ニュースを みましたか。', exTrans: 'Apakah sudah melihat berita hari ini?' },
+  { word: 'しゃしん', translation: 'foto', example: 'しゃしんを とっても いいですか。', exTrans: 'Bolehkah saya mengambil foto?' },
+  { word: 'テープ', translation: 'kaset', example: 'ふるい テープが あります。', exTrans: 'Ada kaset lama.' }
+],
+    'Posisi, Tempat, dan Arah': [
+  { word: 'うえ', translation: 'atas', example: 'つくえの うえに ほんが あります。', exTrans: 'Di atas meja ada buku.' },
+  { word: 'した', translation: 'bawah', example: 'いすの したに ねこが います。', exTrans: 'Di bawah kursi ada kucing.' },
+  { word: 'まえ', translation: 'depan', example: 'がっこうの まえに います。', exTrans: 'Ada di depan sekolah.' },
+  { word: 'うしろ', translation: 'belakang', example: 'あなたの うしろに だれか いますか。', exTrans: 'Apakah ada seseorang di belakangmu?' },
+  { word: 'そば', translation: 'samping, dekat', example: 'わたしの そばに きてください。', exTrans: 'Tolong datang ke dekat saya.' },
+  { word: 'ちかく', translation: 'dekat', example: 'えきの ちかくに ぎんこうが あります。', exTrans: 'Ada bank di dekat stasiun.' },
+  { word: 'となり', translation: 'sebelah', example: 'たなかさんの となりに すわります。', exTrans: 'Duduk di sebelah Pak Tanaka.' },
+  { word: 'よこ', translation: 'samping', example: 'くるまの よこに じてんしゃが あります。', exTrans: 'Di samping mobil ada sepeda.' },
+  { word: 'みぎ', translation: 'kanan', example: 'みぎに まがってください。', exTrans: 'Tolong belok ke kanan.' },
+  { word: 'ひだり', translation: 'kiri', example: 'ひだりに ゆうびんきょくが あります。', exTrans: 'Di sebelah kiri ada kantor pos.' },
+  { word: 'なか', translation: 'dalam', example: 'はこの なかに なにが ありますか。', exTrans: 'Ada apa di dalam kotak?' },
+  { word: 'そと', translation: 'luar', example: 'そとで あそびましょう。', exTrans: 'Mari bermain di luar.' },
+  { word: 'さき', translation: 'depan, ujung', example: 'この みちの さきに えきが あります。', exTrans: 'Di ujung jalan ini ada stasiun.' },
+  { word: 'ひがし', translation: 'timur', example: 'ひがしから たいようが のぼります。', exTrans: 'Matahari terbit dari timur.' },
+  { word: 'にし', translation: 'barat', example: 'にしに ふじさんが みえます。', exTrans: 'Gunung Fuji terlihat di sebelah barat.' },
+  { word: 'みなみ', translation: 'selatan', example: 'みなみの くには あついです。', exTrans: 'Negara bagian selatan itu panas.' },
+  { word: 'きた', translation: 'utara', example: 'きたに うみが あります。', exTrans: 'Ada laut di sebelah utara.' },
+  { word: '～がわ', translation: 'sebelah ～', example: 'みぎがわを あるいてください。', exTrans: 'Tolong berjalan di sebelah kanan.' },
+  { word: 'ところ', translation: 'tempat', example: 'ここは しずかな ところです。', exTrans: 'Di sini adalah tempat yang tenang.' },
+  { word: 'むこう', translation: 'seberang, sebelah sana', example: 'かわの むこうに むらが あります。', exTrans: 'Di seberang sungai ada desa.' },
+  { word: 'ほか', translation: 'lain', example: 'ほかの ひとに きいてください。', exTrans: 'Tolong tanyakan pada orang lain.' }
+],
+    'Warna dan Bentuk': [
+  { word: 'いろ', translation: 'warna', example: 'すきな いろは なんですか。', exTrans: 'Warna apa yang kamu suka?' },
+  { word: 'あか', translation: 'merah', example: 'あかい かばんを かいました。', exTrans: 'Sudah membeli tas merah.' },
+  { word: 'しろ', translation: 'putih', example: 'しろい はなが さきました。', exTrans: 'Bunga putih sudah mekar.' },
+  { word: 'くろ', translation: 'hitam', example: 'くろい くつを はきます。', exTrans: 'Memakai sepatu hitam.' },
+  { word: 'ちゃいろ', translation: 'warna cokelat', example: 'ちゃいろの いぬが います。', exTrans: 'Ada anjing berwarna cokelat.' },
+  { word: 'きいろ', translation: 'kuning', example: 'きいろい バスが きました。', exTrans: 'Bus kuning sudah datang.' },
+  { word: 'みどり', translation: 'hijau', example: 'みどりの やさいを たべます。', exTrans: 'Makan sayur-sayuran hijau.' },
+  { word: 'えん', translation: 'bulat', example: 'えんを かいてください。', exTrans: 'Tolong gambar lingkaran (bentuk bulat).' },
+  { word: 'やじるし', translation: 'tanda panah', example: 'やじるしの ほうに あるきます。', exTrans: 'Berjalan ke arah tanda panah.' },
+  { word: 'たて', translation: 'vertikal', example: 'たての せんを ひきます。', exTrans: 'Menarik garis vertikal.' }
+],
+    'Kata Petunjuk': [
+  { word: 'これ', translation: 'ini', example: 'これは なんですか。', exTrans: 'Ini apa?' },
+  { word: 'それ', translation: 'itu', example: 'それは わたしの ほんです。', exTrans: 'Itu adalah buku saya.' },
+  { word: 'あれ', translation: 'itu (jauh)', example: 'あれは やまですか。', exTrans: 'Apakah itu (yang di sana) gunung?' },
+  { word: 'どれ', translation: 'yang mana', example: 'あなたの かばんは どれですか。', exTrans: 'Tas milikmu yang mana?' },
+  { word: 'ここ', translation: 'sini', example: 'ここは きょうしつです。', exTrans: 'Di sini adalah ruang kelas.' },
+  { word: 'そこ', translation: 'situ', example: 'そこに すわってください。', exTrans: 'Silakan duduk di situ.' },
+  { word: 'あそこ', translation: 'sana', example: 'あそこに といれが あります。', exTrans: 'Di sana ada toilet.' },
+  { word: 'どこ', translation: 'mana (tempat)', example: 'どこに いきますか。', exTrans: 'Pergi ke mana?' },
+  { word: 'こっち', translation: 'sini (informal)', example: 'こっちに きて。', exTrans: 'Datanglah ke sini.' },
+  { word: 'そっち', translation: 'situ (informal)', example: 'そっちは あぶないよ。', exTrans: 'Di situ bahaya lho.' },
+  { word: 'あっち', translation: 'sana (informal)', example: 'あっちへ いこう。', exTrans: 'Ayo pergi ke sana.' },
+  { word: 'どっち', translation: 'mana (informal)', example: 'どっちが いい？', exTrans: 'Mana yang bagus?' },
+  { word: 'この', translation: 'ini (diikuti Kata Benda)', example: 'この ぺんは だれのですか。', exTrans: 'Pen ini punya siapa?' },
+  { word: 'その', translation: 'itu (diikuti Kata Benda)', example: 'その しんぶんを よみます。', exTrans: 'Membaca koran itu.' },
+  { word: 'あの', translation: 'itu jauh (diikuti Kata Benda)', example: 'あの ひとは だれですか。', exTrans: 'Orang itu (yang di sana) siapa?' },
+  { word: 'どの', translation: 'yang mana (diikuti Kata Benda)', example: 'どの くるまが あなたのですか。', exTrans: 'Mobil yang mana yang milikmu?' },
+  { word: 'こちら', translation: 'sini (sopan)', example: 'こちらへ どうぞ。', exTrans: 'Silakan ke sebelah sini.' },
+  { word: 'そちら', translation: 'situ (sopan)', example: 'そちらは てんきが いいですか。', exTrans: 'Apakah di situ cuacanya bagus?' },
+  { word: 'あちら', translation: 'sana (sopan)', example: 'あちらが ぎんこうです。', exTrans: 'Di sebelah sana adalah bank.' },
+  { word: 'どちら', translation: 'mana (sopan)', example: 'どちらから きましたか。', exTrans: 'Datang dari mana?' }
+],
+    'Imbuhan dan Kata Bantu Bilangan': [
+  { word: '～えん', translation: '~ yen', example: 'これは ひゃくえんです。', exTrans: 'Ini harganya 100 yen.' },
+  { word: '～かい', translation: 'kali ~ / lantai ~', example: 'さんかいに いきます。', exTrans: 'Pergi ke lantai 3 / pergi 3 kali.' },
+  { word: '～がわ', translation: 'sebelah ~', example: 'みぎがわを みてください。', exTrans: 'Tolong lihat sebelah kanan.' },
+  { word: '～キロ', translation: '~ kilo (gram/meter)', example: 'ごキロ あるきました。', exTrans: 'Sudah berjalan 5 kilo.' },
+  { word: '～グラム', translation: '~ gram', example: 'ひゃくグラムの にく。', exTrans: '100 gram daging.' },
+  { word: '～キログラム', translation: '~ kilogram', example: 'たいじゅうは ろくじゅうキログラムです。', exTrans: 'Berat badan 60 kilogram.' },
+  { word: '～こ', translation: '~ buah', example: 'りんごを にこ たべました。', exTrans: 'Sudah makan 2 buah apel.' },
+  { word: '～さい', translation: 'usia ~ tahun', example: 'はたち（にじゅうさい）です。', exTrans: 'Berusia 20 tahun.' },
+  { word: '～さつ', translation: '~ jilid (buku)', example: 'ほんを ごさつ かいました。', exTrans: 'Sudah membeli 5 jilid buku.' },
+  { word: 'センチ', translation: 'sentimeter', example: 'ごじゅうセンチ。', exTrans: '50 sentimeter.' },
+  { word: '～メートル', translation: '~ meter', example: 'ひゃくメートル はしります。', exTrans: 'Berlari 100 meter.' },
+  { word: 'ミリ', translation: '~ milimeter', example: 'さんミリ。', exTrans: '3 milimeter.' },
+  { word: '～キロメートル', translation: '~ kilometer', example: 'じゅうキロメートル。', exTrans: '10 kilometer.' },
+  { word: '～だい', translation: '~ buah/unit (elektronik/kendaraan)', example: 'くるまが にだい あります。', exTrans: 'Ada 2 unit mobil.' },
+  { word: '～つ', translation: '~ buah', example: 'ひとつ ください。', exTrans: 'Minta satu buah.' },
+  { word: '～ど', translation: '~ derajat', example: 'いまは さんじゅうどです。', exTrans: 'Sekarang 30 derajat.' },
+  { word: '～にん', translation: '~ orang (jumlah)', example: 'さんにんで いきます。', exTrans: 'Pergi bertiga (3 orang).' },
+  { word: '～ばい', translation: '~ kali lipat', example: 'にばいに なります。', exTrans: 'Menjadi 2 kali lipat.' },
+  { word: '～はい', translation: '~ gelas/cangkir', example: 'おちゃを にはい のみました。', exTrans: 'Sudah minum 2 gelas teh.' },
+  { word: '～ばん', translation: 'nomor / urutan ~', example: 'いちばん。', exTrans: 'Nomor satu.' },
+  { word: '～パーセント', translation: '~ persen', example: 'じゅうパーセント。', exTrans: '10 persen.' },
+  { word: '～まい', translation: '~ lembar', example: 'かみを さんまい ください。', exTrans: 'Minta 3 lembar kertas.' },
+  { word: '～ひき/びき/ぴき', translation: '~ ekor (binatang)', example: 'いぬが いっぴき います。', exTrans: 'Ada seekor anjing.' },
+  { word: '～ページ', translation: 'halaman (buku)', example: 'じゅうページを あけてください。', exTrans: 'Tolong buka halaman 10.' },
+  { word: '～ほん/ぼん/ぽn', translation: '~ batang', example: 'ぺんを にほん かいました。', exTrans: 'Sudah membeli 2 batang pen.' },
+  { word: '～め', translation: 'yang ke ~ (urutan)', example: 'ふたつめ。', exTrans: 'Yang kedua.' },
+  { word: 'いくつめ', translation: 'yang ke berapa?', example: 'いくつめですか。', exTrans: 'Yang ke berapa?' },
+  { word: '～まえ', translation: 'di depan (tempat)', example: 'えきまえ。', exTrans: 'Depan stasiun.' },
+  { word: '～えき', translation: 'stasiun ~ (nama)', example: 'しんじゅくえき。', exTrans: 'Stasiun Shinjuku.' },
+  { word: '～ご', translation: 'bahasa ~', example: 'にほんご。', exTrans: 'Bahasa Jepang.' },
+  { word: '～じん', translation: 'orang (warga negara)', example: 'にほんじん。', exTrans: 'Orang Jepang.' },
+  { word: '～たち', translation: 'sufiks jamak (orang)', example: 'わたしたち。', exTrans: 'Kami (kita).' },
+  { word: '～はん', translation: 'setengah / lewat 30 menit', example: 'ろくじはんです。', exTrans: 'Jam 6 lewat 30 menit.' },
+  { word: '～ころ/～ごろ', translation: 'sekitar (waktu)', example: 'しちじごろ。', exTrans: 'Sekitar jam 7.' }
+]
+  },
+  'Kata Sifat': {
+    'Sifat-i': [
+  { word: 'おおきい', translation: 'Besar', example: 'おおきいいえ。', exTrans: 'Rumah yang besar.' },
+  { word: 'ちいさい', translation: 'Kecil', example: 'ちいさいくるま。', exTrans: 'Mobil yang kecil.' },
+  { word: 'ながい', translation: 'Panjang', example: 'ながいはし。', exTrans: 'Jembatan yang panjang.' },
+  { word: 'みじかい', translation: 'Pendek', example: 'みじかいえんぴつ。', exTrans: 'Pensil yang pendek.' },
+  { word: 'おおい', translation: 'Banyak', example: 'ひとがおおい。', exTrans: 'Banyak orang.' },
+  { word: 'すくない', translation: 'Sedikit', example: 'ひまがすくない。', exTrans: 'Sedikit waktu luang.' },
+  { word: 'ふとい', translation: 'Gemuk / tebal', example: 'ふといゆび。', exTrans: 'Jari yang gemuk.' },
+  { word: 'ほそい', translation: 'Ramping / tipis', example: 'ほそいあし。', exTrans: 'Kaki yang ramping.' },
+  { word: 'あつい', translation: 'Tebal', example: 'あついほん。', exTrans: 'Buku yang tebal.' },
+  { word: 'うすい', translation: 'Tipis / encer', example: 'うすいかみ。', exTrans: 'Kertas yang tipis.' },
+  { word: 'ひろい', translation: 'Luas', example: 'ひろいへや。', exTrans: 'Kamar yang luas.' },
+  { word: 'せまい', translation: 'Sempit', example: 'せまいくに。', exTrans: 'Negara yang sempit.' },
+  { word: 'わかい', translation: 'Muda (usia)', example: 'わかいせんせい。', exTrans: 'Guru yang muda.' },
+  { word: 'あたらしい', translation: 'Baru', example: 'あたらしいかばん。', exTrans: 'Tas yang baru.' },
+  { word: 'ふるい', translation: 'Lama / tua', example: 'ふるいじしょ。', exTrans: 'Kamus lama.' },
+  { word: 'たかい', translation: 'Tinggi / mahal', example: 'せがたかい。', exTrans: 'Badannya tinggi.' },
+  { word: 'やすい', translation: 'Murah', example: 'やすいりんご。', exTrans: 'Apel yang murah.' },
+  { word: 'はやい', translation: 'Cepat (waktu/kelajuan)', example: 'あさはい。', exTrans: 'Pagi yang awal.' },
+  { word: 'おそい', translation: 'Lambat / telat', example: 'あしがおそい。', exTrans: 'Larinya lambat.' },
+  { word: 'とおい', translation: 'Jauh', example: 'がっこうはとおい。', exTrans: 'Sekolahnya jauh.' },
+  { word: 'ちかい', translation: 'Dekat', example: 'うちにちかい。', exTrans: 'Dekat dengan rumah.' },
+  { word: 'つよい', translation: 'Kuat', example: 'つよいかぜ。', exTrans: 'Angin yang kuat.' },
+  { word: 'よわい', translation: 'Lemah', example: 'からだがよわい。', exTrans: 'Tubuhnya lemah.' },
+  { word: 'ひくい', translation: 'Rendah', example: 'ひくいやま。', exTrans: 'Gunung yang rendah.' },
+  { word: 'おもい', translation: 'Berat', example: 'おもいにもつ。', exTrans: 'Barang bawaan yang berat.' },
+  { word: 'かるい', translation: 'Ringan', example: 'かるいかばん。', exTrans: 'Tas yang ringan.' },
+  { word: 'あかるい', translation: 'Terang / riang', example: 'あかるいへや。', exTrans: 'Kamar yang terang.' },
+  { word: 'くらい', translation: 'Gelap / suram', example: 'くらいみち。', exTrans: 'Jalan yang gelap.' },
+  { word: 'むずかしい', translation: 'Sulit', example: 'にほんごはむずかしい。', exTrans: 'Bahasa Jepang itu sulit.' },
+  { word: 'やさしい', translation: 'Mudah / baik hati', example: 'やさしいもんだい。', exTrans: 'Soal yang mudah.' },
+  { word: 'いい', translation: 'Bagus', example: 'いいですね。', exTrans: 'Bagus ya.' },
+  { word: 'わるい', translation: 'Jelek / buruk', example: 'わるいひと。', exTrans: 'Orang jahat.' },
+  { word: 'あつい', translation: 'Panas (benda/cuaca)', example: 'あついおちゃ。', exTrans: 'Teh panas.' },
+  { word: 'つめたい', translation: 'Dingin (benda)', example: 'つめたいみず。', exTrans: 'Air dingin.' },
+  { word: 'あたたかい', translation: 'Hangat', example: 'あたたかいスープ。', exTrans: 'Sup hangat.' },
+  { word: 'ぬるい', translation: 'Suam-suam kuku', example: 'ぬるいおゆ。', exTrans: 'Air yang sudah tidak panas.' },
+  { word: 'さむい', translation: 'Dingin (cuaca)', example: 'きょうはさむい。', exTrans: 'Hari ini dingin.' },
+  { word: 'すずしい', translation: 'Sejuk', example: 'すずしいかぜ。', exTrans: 'Angin yang sejuk.' },
+  { word: 'むしあつい', translation: 'Gerah / lembap', example: 'にほんのなつはむしあつい。', exTrans: 'Musim panas Jepang itu gerah.' },
+  { word: 'おいしい', translation: 'Enak', example: 'このおかしはおいしい。', exTrans: 'Kue ini enak.' },
+  { word: 'まずい', translation: 'Tidak enak', example: 'まずいりょうり。', exTrans: 'Masakan yang tidak enak.' },
+  { word: 'あまい', translation: 'Manis', example: 'あまいみかん。', exTrans: 'Jeruk yang manis.' },
+  { word: 'からい', translation: 'Pedas', example: 'からいたべもの。', exTrans: 'Makanan pedas.' },
+  { word: 'すっぱい', translation: 'Asam', example: 'すっぱいレモン。', exTrans: 'Lemon yang asam.' },
+  { word: 'しおからい', translation: 'Asin', example: 'しおからいたべもの。', exTrans: 'Makanan asin.' },
+  { word: 'しょっぱい', translation: 'Asin (percakapan)', example: 'このスープはしょっぱい。', exTrans: 'Sup ini asin.' },
+  { word: 'にがい', translation: 'Pahit', example: 'にがいコーヒー。', exTrans: 'Kopi yang pahit.' },
+  { word: 'こい', translation: 'Pekat / kental', example: 'こいおちゃ。', exTrans: 'Teh yang pekat.' },
+  { word: 'あおい', translation: 'Biru', example: 'あおいそら。', exTrans: 'Langit biru.' },
+  { word: 'あかい', translation: 'Merah', example: 'あかいはな。', exTrans: 'Bunga merah.' },
+  { word: 'きいろい', translation: 'Kuning', example: 'きいろいくるま。', exTrans: 'Mobil kuning.' },
+  { word: 'くろい', translation: 'Hitam', example: 'くろいくつ。', exTrans: 'Sepatu hitam.' },
+  { word: 'しろい', translation: 'Putih', example: 'しろいねこ。', exTrans: 'Kucing putih.' },
+  { word: 'ちゃいろい', translation: 'Cokelat', example: 'ちゃいろいかばん。', exTrans: 'Tas cokelat.' },
+  { word: 'まるい', translation: 'Bulat', example: 'まるいテーブル。', exTrans: 'Meja bulat.' },
+  { word: 'しかくい', translation: 'Persegi', example: 'しかくいはこのなか。', exTrans: 'Di dalam kotak persegi.' },
+  { word: 'きたない', translation: 'Kotor', example: 'きたないへや。', exTrans: 'Kamar yang kotor.' },
+  { word: 'okashii', translation: 'Aneh / lucu', example: 'おかしいはなし。', exTrans: 'Cerita yang aneh.' },
+  { word: 'あぶない', translation: 'Bahaya', example: 'あぶない！きをつけ。', exTrans: 'Bahaya! Hati-hati.' },
+  { word: 'うるさい', translation: 'Berisik', example: 'うるさいおと。', exTrans: 'Suara yang berisik.' },
+  { word: 'いそがしい', translation: 'Sibuk', example: 'きょうはいそがしい。', exTrans: 'Hari ini sibuk.' },
+  { word: 'すばらしい', translation: 'Luar biasa', example: 'すばらしいけしき。', exTrans: 'Pemandangan yang luar biasa.' },
+  { word: 'かっこいい', translation: 'Keren', example: 'かれはかっこいい。', exTrans: 'Dia (laki-laki) keren.' },
+  { word: 'なかがいい', translation: 'Rukun / akrab', example: 'なかがいいともだち。', exTrans: 'Teman yang akrab.' },
+  { word: 'したしい', translation: 'Akrab', example: 'したしいひと。', exTrans: 'Orang yang akrab.' },
+  { word: 'かわいい', translation: 'Imut / cantik', example: 'かわいいねこ。', exTrans: 'Kucing yang imut.' },
+  { word: 'うつくしい', translation: 'Indah', example: 'うつくしいにわ。', exTrans: 'Taman yang indah.' },
+  { word: 'おとなしい', translation: 'Pendiam / kalem', example: 'おとなしいこ。', exTrans: 'Anak yang pendiam.' },
+  { word: 'たのしい', translation: 'Menyenangkan', example: 'りょこうはたのしい。', exTrans: 'Wisatanya menyenangkan.' },
+  { word: 'おもしろい', translation: 'Menarik / lucu', example: 'おもしろいほん。', exTrans: 'Buku yang menarik.' },
+  { word: 'つまらない', translation: 'Membosankan', example: 'つまらないえいが。', exTrans: 'Film yang membosankan.' },
+  { word: 'うれしい', translation: 'Senang', example: 'あえてうれしい。', exTrans: 'Senang bisa bertemu.' },
+  { word: 'さびしい', translation: 'Sepi / kesepian', example: 'さびしいよる。', exTrans: 'Malam yang sepi.' },
+  { word: 'こわい', translation: 'Takut', example: 'こわいえいが。', exTrans: 'Film horor (menakutkan).' },
+  { word: 'ねむい', translation: 'Mengantuk', example: 'とてもねむい。', exTrans: 'Sangat mengantuk.' },
+  { word: 'いたい', translation: 'Sakit / nyeri', example: 'あたまがいたい。', exTrans: 'Sakit kepala.' },
+  { word: 'ほしい', translation: 'Ingin / mau', example: 'くるまがほしい。', exTrans: 'Ingin mobil.' },
+  { word: 'ない', translation: 'Tidak ada', example: 'おかねがない。', exTrans: 'Tidak ada uang.' }
+],
+    'Sifat-na': [
+  { word: 'しんせつ', translation: 'Baik hati, ramah', example: 'しんせつなひと。', exTrans: 'Orang yang baik hati.' },
+  { word: 'まじめ', translation: 'Rajin, serius, jujur', example: 'まじめにべんきょうします。', exTrans: 'Belajar dengan serius.' },
+  { word: 'ふまじめ', translation: 'Tidak serius, tidak jujur', example: 'ふまじめなせいと。', exTrans: 'Murid yang tidak serius.' },
+  { word: 'はんさむ', translation: 'Ganteng', example: 'はんさむなひとですね。', exTrans: 'Orang yang ganteng ya.' },
+  { word: 'きれい', translation: 'Cantik, bersih', example: 'きれいなはな。', exTrans: 'Bunga yang cantik.' },
+  { word: 'おしゃれ', translation: 'Modis', example: 'おしゃれなふく。', exTrans: 'Baju yang modis.' },
+  { word: 'ゆうめい', translation: 'Terkenal', example: 'ゆうめいなレストラン。', exTrans: 'Restoran yang terkenal.' },
+  { word: 'じょうず', translation: 'Pandai', example: 'にほんごがじょうずです。', exTrans: 'Pandai bahasa Jepang.' },
+  { word: 'へた', translation: 'Tidak pandai', example: 'えがへたです。', exTrans: 'Tidak pandai menggambar.' },
+  { word: 'すき', translation: 'Suka', example: 'くだものがすきです。', exTrans: 'Suka buah-buahan.' },
+  { word: 'きらい', translation: 'Tidak suka, benci', example: 'やさいがきらいです。', exTrans: 'Tidak suka sayuran.' },
+  { word: 'だいすき', translation: 'Suka sekali', example: 'にほんがだいすきです。', exTrans: 'Suka sekali Jepang.' },
+  { word: 'だいきらい', translation: 'Benci sekali', example: 'なっとうがだいきらいです。', exTrans: 'Benci sekali natto.' },
+  { word: 'いや', translation: 'Tidak suka, benci (penolakan)', example: 'いやなにおい。', exTrans: 'Bau yang tidak disukai.' },
+  { word: 'にがて', translation: 'Tidak begitu suka, lemah', example: 'すうがくがにがてです。', exTrans: 'Lemah dalam matematika.' },
+  { word: 'だいじょうぶ', translation: 'Tidak apa-apa', example: 'だいじょうぶですか。', exTrans: 'Apakah tidak apa-apa?' },
+  { word: 'むり', translation: 'Mustahil, tidak boleh', example: 'むりしないでください。', exTrans: 'Jangan memaksakan diri.' },
+  { word: 'だめ', translation: 'Tidak bagus', example: 'それはだめです。', exTrans: 'Itu tidak boleh/bagus.' },
+  { word: 'かわいそう', translation: 'Kasihan', example: 'かわいそうなこねこ。', exTrans: 'Anak kucing yang kasihan.' },
+  { word: 'たいせつ', translation: 'Penting, menyayangi', example: 'たいせつなともだち。', exTrans: 'Teman yang penting.' },
+  { word: 'しつれい', translation: 'Tidak sopan, permisi', example: 'しつれいなことば。', exTrans: 'Kata-kata yang tidak sopan.' },
+  { word: 'しずか', translation: 'Tenang', example: 'しずかなとしょかん。', exTrans: 'Perpustakaan yang tenang.' },
+  { word: 'にぎやか', translation: 'Ramai', example: 'にぎやかなまち。', exTrans: 'Kota yang ramai.' },
+  { word: 'ふくざつ', translation: 'Rumit', example: 'ふくざつなもんだい。', exTrans: 'Masalah yang rumit.' },
+  { word: 'かんたん', translation: 'Mudah', example: 'かんたんなテスト。', exTrans: 'Tes yang mudah.' },
+  { word: 'しんぷる', translation: 'Sederhana', example: 'しんぷるなデザイン。', exTrans: 'Desain yang sederhana.' },
+  { word: 'べんり', translation: 'Praktis', example: 'べんりなスマホ。', exTrans: 'Smartphone yang praktis.' },
+  { word: 'ふべん', translation: 'Tidak praktis', example: 'ふべんなばしょ。', exTrans: 'Tempat yang tidak praktis.' },
+  { word: 'こうきゅう', translation: 'Kelas tinggi, mewah', example: 'こうきゅうなホテル。', exTrans: 'Hotel yang mewah.' },
+  { word: 'りっぱ', translation: 'Megah, layak dihormati', example: 'りっぱなたてもの。', exTrans: 'Bangunan yang megah.' },
+  { word: 'じょうぶ', translation: 'Kuat', example: 'じょうぶなつくえ。', exTrans: 'Meja yang kuat.' },
+  { word: 'あんぜん', translation: 'Aman (keamanan)', example: 'あんぜんなみち。', exTrans: 'Jalan yang aman.' },
+  { word: 'けんこう', translation: 'Sehat (kesehatan)', example: 'けんこうなからだ。', exTrans: 'Tubuh yang sehat.' },
+  { word: 'げんき', translation: 'Sehat, semangat', example: 'おげんきですか。', exTrans: 'Apa kabar? (Apakah sehat?)' },
+  { word: 'あんしん', translation: 'Lega, aman (perasaan)', example: 'それをきいてあんしんしました。', exTrans: 'Lega mendengarnya.' },
+  { word: 'ほんとう', translation: 'Benar', example: 'ほんとうの話。', exTrans: 'Cerita yang benar.' },
+  { word: 'きゅう', translation: 'Mendadak', example: 'きゅうなようじ。', exTrans: 'Urusan mendadak.' },
+  { word: 'ひま', translation: 'Senggang', example: 'きょうはひまです。', exTrans: 'Hari ini senggang.' },
+  { word: 'じゅうぶん', translation: 'Cukup', example: 'じゅうぶんなじかん。', exTrans: 'Waktu yang cukup.' },
+  { word: 'いろいろ', translation: 'Bermacam-macam', example: 'いろいろなひと。', exTrans: 'Bermacam-macam orang.' },
+  { word: 'おなじ', translation: 'Sama', example: 'おなじいろ。', exTrans: 'Warna yang sama.' },
+  { word: 'おおきな', translation: 'Besar', example: 'おおきなこえ。', exTrans: 'Suara yang besar/keras.' },
+  { word: 'ちいさな', translation: 'Kecil', example: 'ちいさなまち。', exTrans: 'Kota yang kecil.' }
+]
+  },
+  'Kata Kerja': {
+    'Kelompok 1': [
+      { word: 'あう', translation: 'bertemu', example: 'ともだちにあう。', exTrans: 'Bertemu teman.' },
+  { word: 'あらう', translation: 'mencuci', example: 'てをあらいます。', exTrans: 'Mencuci tangan.' },
+  { word: 'いう', translation: 'berkata', example: '「おはよう」という。', exTrans: 'Berkata "Selamat pagi".' },
+  { word: 'うたう', translation: 'bernyanyi', example: 'うたをうたう。', exTrans: 'Menyanyikan lagu.' },
+  { word: 'かう', translation: 'membeli', example: 'ぱんをかいました。', exTrans: 'Sudah membeli roti.' },
+  { word: 'すう', translation: 'menghisap/menarik napas', example: 'たばこをすう。', exTrans: 'Merokok.' },
+  { word: 'ちがう', translation: 'berbeda', example: 'それはちがいます。', exTrans: 'Itu berbeda/salah.' },
+  { word: 'つかう', translation: 'menggunakan', example: 'はしをつかいます。', exTrans: 'Menggunakan sumpit.' },
+  { word: 'ならう', translation: 'belajar', example: 'にほんごをならう。', exTrans: 'Belajar bahasa Jepang.' },
+  { word: 'おわる', translation: 'selesai, berakhir', example: 'じゅぎょうがおわる。', exTrans: 'Pelajaran berakhir.' },
+  { word: 'かかる', translation: 'memerlukan (waktu/biaya)', example: 'じかんがかかる。', exTrans: 'Memerlukan waktu.' },
+  { word: 'こまる', translation: 'mendapat masalah, bingung', example: 'おなかがすいてこまる。', exTrans: 'Bingung karena lapar.' },
+  { word: 'しまる', translation: 'tertutup', example: 'ドアがしまります。', exTrans: 'Pintu tertutup.' },
+  { word: 'すわる', translation: 'duduk', example: 'いすにすわります。', exTrans: 'Duduk di kursi.' },
+  { word: 'とまる', translation: 'berhenti', example: 'くるまがとまる。', exTrans: 'Mobil berhenti.' },
+  { word: 'なる', translation: 'berbunyi, berdering', example: 'でんわがなる。', exTrans: 'Telepon berbunyi.' },
+  { word: 'はじまる', translation: 'dimulai', example: 'かいぎがはじまる。', exTrans: 'Rapat dimulai.' },
+  { word: 'はる', translation: 'menempel, memasang', example: 'きってをはります。', exTrans: 'Menempel perangko.' },
+  { word: 'まがる', translation: 'belok', example: 'みぎにまがる。', exTrans: 'Belok ke kanan.' },
+  { word: 'やる', translation: 'mengerjakan', example: 'しゅくだいをやる。', exTrans: 'Mengerjakan PR.' },
+  { word: 'わかる', translation: 'mengerti, mengetahui', example: 'いみがわかります。', exTrans: 'Mengerti artinya.' },
+  { word: 'わたる', translation: 'menyeberang', example: 'みちをわたる。', exTrans: 'Menyeberang jalan.' },
+  { word: 'うる', translation: 'menjual', example: 'ほんをうります。', exTrans: 'Menjual buku.' },
+  { word: 'おくる', translation: 'mengirim, menjalani', example: 'メールをおくる。', exTrans: 'Mengirim email.' },
+  { word: 'かぶる', translation: 'memakai (topi, dsb)', example: 'ぼうしをかぶる。', exTrans: 'Memakai topi.' },
+  { word: 'つくる', translation: 'membuat', example: 'りょうりをつくる。', exTrans: 'Membuat masakan.' },
+  { word: 'ふる', translation: 'turun (hujan, salju)', example: 'あめがふる。', exTrans: 'Turun hujan.' },
+  { word: 'くもる', translation: 'berawan/mendung', example: 'きょうはくもる。', exTrans: 'Hari ini mendung.' },
+  { word: 'とる', translation: 'mengambil, mendapatkan', example: 'しゃしんをとる。', exTrans: 'Mengambil foto.' },
+  { word: 'のぼる', translation: 'mendaki', example: 'やまにのぼります。', exTrans: 'Mendaki gunung.' },
+  { word: 'のる', translation: 'naik (kendaraan)', example: 'バスにのる。', exTrans: 'Naik bus.' },
+  { word: 'たつ', translation: 'berdiri', example: 'そこにたつ。', exTrans: 'Berdiri di sana.' },
+  { word: 'まつ', translation: 'menunggu', example: 'ちょっとまってください。', exTrans: 'Tolong tunggu sebentar.' },
+  { word: 'もつ', translation: 'membawa, mempunyai', example: 'にもつをもつ。', exTrans: 'Membawa barang.' },
+  { word: 'あく', translation: 'terbuka', example: 'まどがあく。', exTrans: 'Jendela terbuka.' },
+  { word: 'あるく', translation: 'berjalan', example: 'がっこうまであるく。', exTrans: 'Berjalan sampai sekolah.' },
+  { word: 'いく', translation: 'pergi', example: 'デパートへいく。', exTrans: 'Pergi ke departemen store.' },
+  { word: 'おく', translation: 'menaruh, meletakkan', example: 'ここに置いて。', exTrans: 'Taruh di sini.' },
+  { word: 'かく', translation: 'menulis', example: 'てがみをかく。', exTrans: 'Menulis surat.' },
+  { word: 'きく', translation: 'bertanya/mendengar', example: 'せんせいきく。', exTrans: 'Bertanya kepada guru.' },
+  { word: 'さく', translation: 'bermekaran', example: 'はながさく。', exTrans: 'Bunga bermekaran.' },
+  { word: 'つく', translation: 'tiba', example: 'えきにつく。', exTrans: 'Tiba di stasiun.' },
+  { word: 'なく', translation: 'bersuara (binatang)', example: 'とりがなく。', exTrans: 'Burung berkicau.' },
+  { word: 'はく', translation: 'memakai (sepatu, celana)', example: 'くつをはく。', exTrans: 'Memakai sepatu.' },
+  { word: 'はたらく', translation: 'bekerja', example: 'こうじょうではたらく。', exTrans: 'Bekerja di pabrik.' },
+  { word: 'ひく', translation: 'menarik/memainkan musik', example: 'ピアノをひく。', exTrans: 'Memainkan piano.' },
+  { word: 'ふく', translation: 'bertiup, meniup', example: 'かぜがふく。', exTrans: 'Angin bertiup.' },
+  { word: 'みがく', translation: 'menggosok', example: 'はをみがく。', exTrans: 'Menggosok gigi.' },
+  { word: 'おす', translation: 'menekan', example: 'ボタンをおす。', exTrans: 'Menekan tombol.' },
+  { word: 'かえす', translation: 'mengembalikan', example: 'ほんをかえします。', exTrans: 'Mengembalikan buku.' },
+  { word: 'かす', translation: 'meminjamkan', example: 'おかねをかす。', exTrans: 'Meminjamkan uang.' },
+  { word: 'けす', translation: 'memadamkan, menghapus', example: 'でんきをけす。', exTrans: 'Mematikan lampu.' },
+  { word: 'さす', translation: 'memakai (payung)', example: 'かさをさす。', exTrans: 'Memakai payung.' },
+  { word: 'だす', translation: 'mengirim, mengeluarkan', example: 'てがみをだす。', exTrans: 'Mengirim surat.' },
+  { word: 'なくす', translation: 'menghilangkan', example: 'さいふをなくした。', exTrans: 'Sudah menghilangkan dompet.' },
+  { word: 'はなす', translation: 'berbicara', example: 'にほんごではなす。', exTrans: 'Berbicara dalam bahasa Jepang.' },
+  { word: 'わたす', translation: 'menyerahkan', example: 'プレゼントをわたす。', exTrans: 'Menyerahkan hadiah.' },
+  { word: 'あそぶ', translation: 'bermain', example: 'こうえんであそぶ。', exTrans: 'Bermain di taman.' },
+  { word: 'とぶ', translation: 'terbang', example: 'とりがとぶ。', exTrans: 'Burung terbang.' },
+  { word: 'ならぶ', translation: 'berjejer, berbaris', example: 'みせにならぶ。', exTrans: 'Antre di toko.' },
+  { word: 'よぶ', translation: 'memanggil, mengajak', example: 'タクシーをよぶ。', exTrans: 'Memanggil taksi.' },
+  { word: 'しぬ', translation: 'mati', example: 'しなないで。', exTrans: 'Jangan mati.' },
+  { word: 'すむ', translation: 'tinggal, menghuni', example: 'ここにすんでいます。', exTrans: 'Tinggal di sini.' },
+  { word: 'たのむ', translation: 'meminta', example: 'おねがいをたのむ。', exTrans: 'Meminta bantuan.' },
+  { word: 'のむ', translation: 'minum', example: 'みずをのむ。', exTrans: 'Minum air.' },
+  { word: 'やすむ', translation: 'istirahat, absen', example: 'きょうはやすみます。', exTrans: 'Hari ini istirahat/absen.' },
+  { word: 'よむ', translation: 'membaca', example: 'ほんをよむ。', exTrans: 'Membaca buku.' },
+  { word: 'およぐ', translation: 'berenang', example: 'プールでおよぐ。', exTrans: 'Berenang di kolam renang.' },
+  { word: 'ぬぐ', translation: 'melepas', example: 'くつをぬいでください。', exTrans: 'Tolong lepas sepatu.' },
+  { word: 'いる', translation: 'memerlukan', example: 'おかねがいる。', exTrans: 'Memerlukan uang.' },
+  { word: 'かえる', translation: 'pulang', example: 'うちにかえる。', exTrans: 'Pulang ke rumah.' },
+  { word: 'きる', translation: 'memotong', example: 'かみをきる。', exTrans: 'Memotong rambut.' },
+  { word: 'しる', translation: 'mengetahui', example: 'かれをしっていますか。', exTrans: 'Apakah kenal/tahu dia?' },
+  { word: 'はいる', translation: 'masuk', example: 'へやにはいる。', exTrans: 'Masuk ke kamar.' },
+  { word: 'はしる', translation: 'berlari', example: 'みちをはしる。', exTrans: 'Berlari di jalan.' },
+    ],
+    'Kelompok 2': [
+  { word: 'あびる', translation: 'mandi', example: 'シャワーをあびる。', exTrans: 'Mandi pancuran.' },
+  { word: 'おきる', translation: 'bangun', example: 'あさろくじにおきる。', exTrans: 'Bangun jam 6 pagi.' },
+  { word: 'おりる', translation: 'turun, keluar', example: 'バスをおりる。', exTrans: 'Turun dari bus.' },
+  { word: 'かりる', translation: 'meminjam', example: 'ほんをかりる。', exTrans: 'Meminjam buku.' },
+  { word: 'きる', translation: 'memakai (baju)', example: 'シャツをきる。', exTrans: 'Memakai kemeja.' },
+  { word: 'できる', translation: 'bisa, mampu, selesai', example: 'りょうりができる。', exTrans: 'Bisa memasak.' },
+  { word: 'みる', translation: 'melihat', example: 'えいがをみる。', exTrans: 'Menonton film.' },
+  { word: 'あける', translation: 'membuka', example: 'まどをあける。', exTrans: 'Membuka jendela.' },
+  { word: 'あげる', translation: 'memberi', example: 'プレゼントをあげる。', exTrans: 'Memberi hadiah.' },
+  { word: 'いれる', translation: 'memasukkan', example: 'かばんに入れる。', exTrans: 'Memasukkan ke tas.' },
+  { word: 'うまれる', translation: 'lahir', example: 'インドネシアでうまれる。', exTrans: 'Lahir di Indonesia.' },
+  { word: 'おしえる', translation: 'mengajar', example: 'にほんごをおしえる。', exTrans: 'Mengajarkan bahasa Jepang.' },
+  { word: 'おぼえる', translation: 'menghafal, merasa', example: 'かんじをおぼえる。', exTrans: 'Menghafal kanji.' },
+  { word: 'かける', translation: 'memakai (kacamata)', example: 'めがねをかける。', exTrans: 'Memakai kacamata.' },
+  { word: 'きえる', translation: 'padam, lenyap', example: 'でんきがきえる。', exTrans: 'Lampu padam.' },
+  { word: 'こたえる', translation: 'menjawab', example: 'しつもんにこたえる。', exTrans: 'Menjawab pertanyaan.' },
+  { word: 'しめる', translation: 'menutup', example: 'まどをしめる。', exTrans: 'Menutup jendela.' },
+  { word: 'たべる', translation: 'makan', example: 'ごはんをたべる。', exTrans: 'Makan nasi.' },
+  { word: 'つかれる', translation: 'capek, lelah', example: 'とてもつかれた。', exTrans: 'Sangat lelah.' },
+  { word: 'つとめる', translation: 'bekerja', example: 'かいしゃにつとめる。', exTrans: 'Bekerja di perusahaan.' },
+  { word: 'でかける', translation: 'pergi keluar', example: 'ひとりでおでかけ。', exTrans: 'Pergi keluar sendirian.' },
+  { word: 'でる', translation: 'keluar', example: 'へやをでる。', exTrans: 'Keluar kamar.' },
+  { word: 'でんきをつける', translation: 'menyalakan listrik', example: 'でんきをつけましょう。', exTrans: 'Mari nyalakan lampu.' },
+  { word: 'でんわをかける', translation: 'menelepon', example: 'ともだちにでんわをかける。', exTrans: 'Menelepon teman.' },
+  { word: 'ならべる', translation: 'menjejerkan', example: 'おさらをならべる。', exTrans: 'Menjejerkan piring.' },
+  { word: 'ねる', translation: 'tidur', example: 'もうねます。', exTrans: 'Sudah mau tidur.' },
+  { word: 'はれる', translation: 'cerah', example: 'あしたははれる。', exTrans: 'Besok akan cerah.' },
+  { word: 'みせる', translation: 'memperlihatkan', example: 'しゃしんをみせる。', exTrans: 'Memperlihatkan foto.' },
+  { word: 'わすれる', translation: 'lupa', example: 'なまえをわすれる。', exTrans: 'Lupa nama.' },
+    ],
+    'Kelompok 3': [
+  { word: 'くる', translation: 'datang', example: 'ともだちがくる。', exTrans: 'Teman datang.' },
+  { word: 'する', translation: 'melakukan', example: 'なにをする？', exTrans: 'Melakukan apa?' },
+  { word: 'けっこんする', translation: 'menikah', example: 'らいねんけっこんする。', exTrans: 'Menikah tahun depan.' },
+  { word: 'こぴーする', translation: 'memfotokopi', example: 'しりょうをこぴーする。', exTrans: 'Memfotokopi dokumen.' },
+  { word: 'しつもんする', translation: 'bertanya', example: 'せんせいにしつもんする。', exTrans: 'Bertanya kepada guru.' },
+  { word: 'せんたくする', translation: 'mencuci', example: 'ふくをせんたくする。', exTrans: 'Mencuci baju.' },
+  { word: 'そうじする', translation: 'membersihkan', example: 'へやをそうじする。', exTrans: 'Membersihkan kamar.' },
+  { word: 'ちこくする', translation: 'terlambat', example: '가っこうにちこくする。', exTrans: 'Terlambat ke sekolah.' },
+  { word: 'べんきょうする', translation: 'belajar', example: 'にほんごをべんきょうする。', exTrans: 'Belajar bahasa Jepang.' },
+  { word: 'りょうりする', translation: 'masak', example: 'だいどころでりょうりする。', exTrans: 'Memasak di dapur.' },
+  { word: 'れんしゅうする', translation: 'berlatih', example: 'ピアノをれんしゅうする。', exTrans: 'Berlatih piano.' }
+    ],
+  } ,
+  'Kelas Kata Lain': {
+    'Kata Keterangan': [
+  { word: 'もう', translation: 'sudah, sebentar lagi', example: 'もうたべました。', exTrans: 'Sudah makan.' },
+  { word: 'もう～', translation: '～ lagi', example: 'もうひとつください。', exTrans: 'Minta satu lagi.' },
+  { word: 'あまり～ない', translation: 'tidak begitu ～', example: 'あまりあつくないです。', exTrans: 'Tidak begitu panas.' },
+  { word: 'だいたい', translation: 'kira-kira, garis besar', example: 'だいたいわかりました。', exTrans: 'Sudah mengerti garis besarnya.' },
+  { word: 'たいてい', translation: 'biasanya, hampir selalu', example: 'たいていあさろくじにおきます。', exTrans: 'Biasanya bangun jam 6 pagi.' },
+  { word: 'たぶん', translation: 'mungkin', example: 'あしたはたぶんあめです。', exTrans: 'Besok mungkin hujan.' },
+  { word: 'だんだん', translation: 'semakin, berangsur-angsur', example: 'だんだんあつくなります。', exTrans: 'Semakin lama menjadi panas.' },
+  { word: 'ちょうど', translation: 'tepat, persis, pas', example: 'ちょうどさんじです。', exTrans: 'Tepat jam 3.' },
+  { word: 'ちょっと', translation: 'sedikit, sebentar', example: 'ちょっとまってください。', exTrans: 'Tolong tunggu sebentar.' },
+  { word: 'とても', translation: 'sangat', example: 'とてもおいしいです。', exTrans: 'Sangat enak.' },
+  { word: 'また', translation: 'lagi', example: 'またあした。', exTrans: 'Sampai jumpa lagi besok.' },
+  { word: 'まだ', translation: 'belum, masih', example: 'まだたべていません。', exTrans: 'Belum makan.' },
+  { word: 'もちろん', translation: 'tentu saja', example: 'もちろんいいですよ。', exTrans: 'Tentu saja boleh.' },
+  { word: 'もっと', translation: 'lebih, lebih lagi', example: 'もっとべんきょうします。', exTrans: 'Akan belajar lebih lagi.' },
+  { word: 'よく', translation: 'dengan baik, sering', example: 'よくねました。', exTrans: 'Sudah tidur dengan baik.' },
+  { word: 'すこし', translation: 'sedikit, sebentar', example: 'すこしわかります。', exTrans: 'Mengerti sedikit.' },
+  { word: 'やく～', translation: 'kira-kira, sekitar', example: 'やく一じかん。', exTrans: 'Kira-kira satu jam.' },
+  { word: 'ゆっくり', translation: 'perlahan-lahan', example: 'ゆっくりはなしてください。', exTrans: 'Tolong bicara perlahan-lahan.' },
+  { word: 'さきに', translation: 'duluan, lebih dulu', example: 'おさきにしつれいします。', exTrans: 'Permisi duluan.' },
+  { word: 'すぐに', translation: 'segera', example: 'すぐにいきます。', exTrans: 'Akan segera pergi.' },
+  { word: 'はじめて', translation: 'pertama kali', example: 'にほんごではじめてはなす。', exTrans: 'Berbicara bahasa Jepang untuk pertama kalinya.' },
+  { word: 'さいご（は）', translation: 'pada akhirnya', example: 'さいごまでがんばる。', exTrans: 'Berusaha sampai akhir.' },
+  { word: 'あとで', translation: 'setelah itu, nanti', example: 'あとでたべます。', exTrans: 'Nanti akan makan.' },
+  { word: 'じぶんで', translation: 'sendiri', example: 'じぶんでつくりました。', exTrans: 'Membuat sendiri.' },
+  { word: 'はじめ（は）', translation: 'awalnya', example: 'はじめはむずかしいです。', exTrans: 'Awalnya sulit.' },
+  { word: 'ひとりで', translation: 'sendiri', example: 'ひとりでいきます。', exTrans: 'Pergi sendiri.' },
+  { word: 'みんなで', translation: 'bersama semua orang', example: 'みんなでうたいましょう。', exTrans: 'Mari bernyanyi bersama-sama.' },
+  { word: 'ぜんぶで', translation: 'secara keseluruhan / total', example: 'ぜんぶでいくらですか。', exTrans: 'Secara total harganya berapa?' },
+  { word: 'いっしょに', translation: 'bersama', example: 'いっしょにたべましょう。', exTrans: 'Mari makan bersama.' },
+  { word: 'ほんとうに', translation: 'benar-benar', example: 'ほんとうにありがとうございます。', exTrans: 'Benar-benar terima kasih.' },
+  { word: 'もうすぐ', translation: 'sebentar lagi', example: 'もうすぐはじまります。', exTrans: 'Sebentar lagi akan dimulai.' },
+  { word: 'もうすこし', translation: 'sedikit lagi', example: 'もうすこしまってください。', exTrans: 'Tolong tunggu sedikit lagi.' },
+  { word: 'なんかいも', translation: 'berkali-kali', example: 'なんかいもいきました。', exTrans: 'Sudah pergi berkali-kali.' },
+  { word: 'いちども', translation: 'satu kali pun tidak', example: 'いちどもたべたことがない。', exTrans: 'Satu kali pun tidak pernah makan.' },
+  { word: 'いつも', translation: 'selalu', example: 'いつもべんきょうします。', exTrans: 'Selalu belajar.' },
+  { word: 'ときどき', translation: 'kadang-kadang', example: 'ときどきあそびます。', exTrans: 'Kadang-kadang bermain.' },
+  { word: 'もういちど', translation: 'sekali lagi', example: 'もういちどいってください。', exTrans: 'Tolong ucapkan sekali lagi.' },
+  { word: 'ぜんぜん', translation: 'sama sekali tidak', example: 'ぜんぜんわかりません。', exTrans: 'Sama sekali tidak mengerti.' }
+],
+    'Kata Tanya': [
+  { word: 'いつ', translation: 'kapan', example: 'いつにほんにいきますか。', exTrans: 'Kapan pergi ke Jepang?' },
+  { word: 'だれ', translation: 'siapa', example: 'だれとあそびますか。', exTrans: 'Bermain dengan siapa?' },
+  { word: 'なに', translation: 'apa', example: 'なにをたべますか。', exTrans: 'Makan apa?' },
+  { word: 'なぜ', translation: 'kenapa', example: 'なぜおくれましたか。', exTrans: 'Kenapa terlambat?' },
+  { word: 'どうやって', translation: 'bagaimana cara', example: 'どうやっていきますか。', exTrans: 'Bagaimana cara perginya?' },
+  { word: 'どれ', translation: 'yang mana', example: 'どれがあなたのペンですか。', exTrans: 'Yang mana pen milikmu?' },
+  { word: 'どの～', translation: '～ yang mana', example: 'どのかばんがほしい？', exTrans: 'Tas yang mana yang kamu inginkan?' },
+  { word: 'どんな', translation: 'seperti apa', example: 'どんなひとですか。', exTrans: 'Orang yang seperti apa?' },
+  { word: 'どこ', translation: 'di mana', example: 'どこにすんでいますか。', exTrans: 'Tinggal di mana?' },
+  { word: 'どちら', translation: 'yang mana / di mana (sopan)', example: 'どちらがすきですか。', exTrans: 'Yang mana yang Anda suka?' },
+  { word: 'どっち', translation: 'yang mana (informal)', example: 'どっちがいい？', exTrans: 'Yang mana yang bagus?' },
+  { word: 'どう', translation: 'bagaimana', example: 'てんきはどうですか。', exTrans: 'Bagaimana cuacanya?' },
+  { word: 'どういう', translation: 'bagaimana / seperti apa', example: 'どういういみですか。', exTrans: 'Artinya bagaimana / apa maksudnya?' },
+  { word: 'いくつ', translation: 'berapa (jumlah benda / usia)', example: 'おかしはいくつありますか。', exTrans: 'Kuenya ada berapa buah?' },
+  { word: 'いくら', translation: 'berapa (harga / ukuran)', example: 'これはいくらですか。', exTrans: 'Ini harganya berapa?' },
+  { word: 'どうして', translation: 'mengapa', example: 'どうしてべんきょうしますか。', exTrans: 'Mengapa kamu belajar?' },
+  { word: 'どのくらい', translation: 'berapa banyak / seberapa', example: 'どのくらいかかりますか。', exTrans: 'Berapa lama / seberapa banyak biayanya?' },
+  { word: 'どのへん', translation: 'sekitar mana', example: 'どのへんにありますか。', exTrans: 'Ada di sekitar mana?' },
+  { word: 'いかが', translation: 'bagaimana (tawaran sopan)', example: 'おちゃはいかがですか。', exTrans: 'Bagaimana kalau minum teh? (menawarkan)' },
+  { word: 'どなた', translation: 'siapa (sopan)', example: 'どなたですか。', exTrans: 'Siapa ya? (sangat sopan)' },
+  { word: 'なん～', translation: '～ berapa / ～ apa', example: 'なんじですか。', exTrans: 'Jam berapa?' }
+],
+    'Kata Penghubung': [
+  { word: 'そして', translation: 'dan (penghubung kalimat)', example: 'やさいをたべます。そして、くだものもたべます。', exTrans: 'Makan sayur. Dan, makan buah juga.' },
+  { word: 'それから', translation: 'kemudian / setelah itu', example: 'べんきょうしました。それから、ねました。', exTrans: 'Sudah belajar. Kemudian, sudah tidur.' },
+  { word: 'でも', translation: 'tetapi', example: 'にほんごはむずかしいです。でも, たのしいです。', exTrans: 'Bahasa Jepang sulit. Tetapi, menyenangkan.' }
+],
+  },
+};
+
+let ALL_GAME_VOCAB = [];
+Object.values(VOCAB_DATA).forEach(cat => {
+  Object.values(cat).forEach(sub => {
+    if (Array.isArray(sub)) ALL_GAME_VOCAB.push(...sub);
+  });
+});
+
+// --- STATE APLIKASI ---
+let state = {
+    page: 'home',
+    selectedCat: null,
+    currentDeck: [],
+    flippedStates: {},
+    flashcardIdx: 0,
+    quizState: { questions: [], idx: 0, score: 0, lives: 3, history: [], finished: false },
+    matchState: { level: 1, cards: [], flipped: [], solved: [], previewing: false, timeoutId: null },
+    speedState: { target: null, options: [], timer: 8, score: 0, isOver: false, intervalId: null },
+    scrambleState: { target: null, scrambled: [], selected: [], score: 0, lives: 3, isFinished: false },
+    chatState: { isOpen: false, isTyping: false, messages: [{ role: 'model', text: 'Halo! Saya Sensei AI. Ada kosakata yang membingungkan? Tanya saja saya ya!' }] }
+};
+
+// --- RENDER ENGINE SEDERHANA ---
+const appDiv = document.getElementById('app');
+
+function navigate(pageStr) {
+    state.page = pageStr;
+    // Clear any game intervals
+    if(state.speedState.intervalId) clearInterval(state.speedState.intervalId);
+    if(state.matchState.timeoutId) clearTimeout(state.matchState.timeoutId);
+    renderApp();
+}
+
+function getVocabFromPath(path) {
+    if (!path) return null;
+    const parts = path.split(' > ');
+    let current = VOCAB_DATA;
+    for (const part of parts) {
+        if (!current || !current[part]) return null;
+        current = current[part];
+    }
+    return current;
+}
+
+function showTutorialModal() {
+    document.getElementById('tutorial-modal').classList.remove('hidden');
+}
+
+function closeTutorial() {
+    document.getElementById('tutorial-modal').classList.add('hidden');
+}
+
+// --- FUNGSI RENDER VIEW ---
+function renderHome() {
+    return `
+        <div class="text-center text-white w-full">
+            <h1 class="text-6xl md:text-8xl font-black italic mb-12 tracking-tighter uppercase leading-none text-center w-full">
+                URESHII <span class="text-blue-500 block text-2xl md:text-3xl not-italic tracking-[0.5em] font-bold mt-4 uppercase text-center w-full">Nihongo</span>
+            </h1>
+            <div class="flex flex-col gap-4 items-center">
+                <button class="bg-blue-600 px-16 py-5 rounded-full font-black text-2xl shadow-neon-blue hover:bg-blue-500 transition-all border-b-8 border-blue-800 active:border-b-0 active:translate-y-1" 
+                        onclick="navigate('categories'); showTutorialModal();">
+                    MULAI BELAJAR
+                </button>
+                <button class="flex items-center gap-2 text-blue-400 font-bold hover:text-blue-300 transition-colors bg-gray-800/50 px-6 py-2 rounded-full border border-blue-500/20" 
+                        onclick="navigate('about')">
+                    <i data-lucide="info" class="w-4 h-4"></i> About Me
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function renderAbout() {
+    return `
+        <div class="w-full max-w-4xl p-10 bg-gray-900/80 backdrop-blur-xl rounded-[3rem] border-2 border-blue-500/30 shadow-2xl overflow-y-auto max-h-[85vh] text-center">
+            <button onclick="navigate('home')" class="mb-8 p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl inline-flex items-center justify-center">
+                <i data-lucide="arrow-left" class="w-6 h-6"></i>
+            </button>
+            <div class="space-y-10">
+                <section class="text-center">
+                    <div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-neon-blue">
+                        <i data-lucide="user" class="w-12 h-12 text-white"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-white mb-2 uppercase">Halo! Selamat datang di platform ini.</h2>
+                    <p class="text-lg leading-relaxed text-center">
+                        Saya <span class="text-blue-400 font-bold">Amelia Rafika Prameswari Basuki</span> (NIM: 2302422068), seorang mahasiswa yang memiliki dedikasi dalam dunia pendidikan. Website ini adalah prototipe media pembelajaran digital untuk pemelajar bahasa Jepang pemula.
+                    </p>
+                </section>
+                <hr class="border-white/10" />
+                <section class="text-left">
+                    <h3 class="text-2xl font-black text-blue-400 mb-4 flex items-center gap-3 uppercase italic">
+                        <i data-lucide="target" class="w-6 h-6"></i> Misi dan Tujuan
+                    </h3>
+                    <p class="leading-relaxed">Website ini dikembangkan untuk mengeksplorasi efektivitas media interaktif dalam mempermudah penguasaan kosa kata JLPT N5 secara digital.</p>
+                </section>
+            </div>
+        </div>
+    `;
+}
+
+function renderCategories() {
+    let catHTML = Object.keys(VOCAB_DATA).map(cat => `
+        <button class="bg-gray-800 p-8 rounded-3xl border-b-4 border-blue-700 hover:bg-gray-700 flex justify-between items-center transition-all shadow-2xl group text-left" 
+                onclick="state.selectedCat = '${cat}'; navigate('subcategories');">
+            <span class="text-2xl font-black uppercase">${cat}</span>
+            <i data-lucide="chevron-right" class="text-blue-500 group-hover:translate-x-2 transition-transform w-6 h-6"></i>
+        </button>
+    `).join('');
+
+    return `
+        <div class="w-full max-w-4xl p-6 text-center relative">
+            <div class="flex items-center gap-4 mb-2">
+                <button onclick="navigate('home')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl transition-all">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <h2 class="text-4xl font-black uppercase tracking-tight text-center w-full">Kategori Materi</h2>
+            </div>
+            <p class="text-blue-400 font-black mb-8 animate-pulse-slow text-sm uppercase tracking-widest text-center w-full">Pilih kategori materi yang ingin kamu pelajari di bawah ini.</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-14">
+                ${catHTML}
+            </div>
+            
+            <div class="bg-gradient-to-br from-indigo-900 to-purple-950 p-8 rounded-[3rem] border-2 border-white/10 shadow-2xl text-center">
+                <h3 class="text-2xl font-black text-yellow-400 mb-8 flex items-center justify-center gap-3 italic uppercase">
+                    <i data-lucide="gamepad-2" class="w-8 h-8"></i> Main Game Seru!
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <button class="p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all bg-blue-600 text-white" onclick="startMatchGame()">Memory Match</button>
+                    <button class="p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all bg-pink-600 text-white" onclick="startSpeedGame()">Speed Translator</button>
+                    <button class="p-5 rounded-2xl font-black shadow-lg hover:scale-105 transition-all bg-yellow-500 text-black" onclick="startScrambleGame()">Word Scramble</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderSubcategories() {
+    if(!state.selectedCat) return '';
+    let subsHTML = Object.keys(VOCAB_DATA[state.selectedCat]).map(sub => `
+        <button class="w-full bg-gray-800 p-6 rounded-[2rem] border-l-8 border-blue-500 font-black text-xl hover:bg-blue-600 transition-all flex justify-between items-center text-left shadow-xl" 
+                onclick="state.selectedCat = '${state.selectedCat} > ${sub}'; navigate('modeSelect');">
+            ${sub}
+            <i data-lucide="book-open" class="opacity-20 w-6 h-6"></i>
+        </button>
+    `).join('');
+
+    return `
+        <div class="w-full max-w-md p-6 text-center">
+            <div class="flex items-center gap-5 mb-2">
+                <button onclick="state.selectedCat = null; navigate('categories');" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <h2 class="text-3xl font-black text-blue-400 uppercase tracking-widest leading-tight text-center w-full">${state.selectedCat}</h2>
+            </div>
+            <p class="text-blue-400 font-black mb-10 animate-pulse-slow text-xs uppercase tracking-widest text-center w-full">Pilih salah satu kategori yang akan kamu pelajari.</p>
+            <div class="space-y-4">
+                ${subsHTML}
+            </div>
+        </div>
+    `;
+}
+
+function renderModeSelect() {
+    let title = state.selectedCat.split(' > ').pop();
+    return `
+        <div class="text-center p-14 bg-gray-800 rounded-[3rem] border-4 border-blue-600 shadow-2xl max-w-sm relative">
+            <button onclick="state.selectedCat = state.selectedCat.split(' > ')[0]; navigate('subcategories');" class="absolute top-6 left-6 p-2 bg-gray-700 rounded-full">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+            <h2 class="text-4xl font-black mb-2 uppercase italic text-center w-full">${title}</h2>
+            <p class="text-blue-400 font-black mb-10 text-xs uppercase tracking-widest text-center w-full">Pilih mode belajar kamu.</p>
+            
+            <div class="flex flex-col gap-5">
+                <button class="bg-blue-600 py-5 px-10 rounded-2xl font-black text-xl shadow-neon-blue hover:bg-blue-500 inline-flex justify-center items-center gap-2" 
+                        onclick="navigate('vocabList')">
+                    <i data-lucide="list" class="w-6 h-6"></i> Daftar Kosakata
+                </button>
+                <button class="bg-purple-600 py-5 px-10 rounded-2xl font-black text-xl shadow-lg hover:bg-purple-500 inline-flex justify-center items-center gap-2" 
+                        onclick="initQuiz()">
+                    <i data-lucide="brain" class="w-6 h-6"></i> Kuis
+                </button>
+            </div>
+            <button class="mt-10 text-gray-500 font-black uppercase text-sm tracking-widest" onclick="state.selectedCat = state.selectedCat.split(' > ')[0]; navigate('subcategories');">Kembali Ke Sub-Kategori</button>
+        </div>
+    `;
+}
+
+function initFlashcards() {
+    const vocab = getVocabFromPath(state.selectedCat);
+    if(vocab) {
+        state.currentDeck = shuffleArray(vocab);
+        state.flippedStates = {};
+        state.flashcardIdx = 0;
+        navigate('flashcards');
+    }
+}
+
+function toggleFlip(index) {
+    state.flippedStates[index] = !state.flippedStates[index];
+    renderApp();
+}
+
+function nextFlashcard() {
+    if (state.flashcardIdx < state.currentDeck.length - 1) {
+        state.flashcardIdx++;
+        renderApp();
+    }
+}
+
+function prevFlashcard() {
+    if (state.flashcardIdx > 0) {
+        state.flashcardIdx--;
+        renderApp();
+    }
+}
+
+function renderVocabList() {
+    const vocab = getVocabFromPath(state.selectedCat);
+    if (!vocab) return '';
+    let title = state.selectedCat.split(' > ').pop();
+
+    let listHTML = vocab.map(v => `
+        <div class="bg-gray-800 p-5 rounded-2xl border-l-4 border-blue-500 mb-4 text-left shadow-lg flex justify-between items-center hover:bg-gray-700 transition-colors">
+            <div>
+                <p class="text-3xl font-black text-blue-300 mb-1 cursor-pointer hover:text-white transition-colors" onclick="speakJapanese('${v.word.replace(/'/g, "\\'")}')">${v.word}</p>
+                <p class="text-lg font-bold text-white mb-2">${v.translation}</p>
+                ${v.example ? `
+                    <div class="text-sm text-gray-400 border-t border-white/10 pt-2 mt-2">
+                        <p class="text-blue-200 font-bold mb-1">${v.example}</p>
+                        <p class="italic text-xs">"${v.exTrans}"</p>
+                    </div>
+                ` : ''}
+            </div>
+            <button onclick="speakJapanese('${v.word.replace(/'/g, "\\'")}')" class="p-4 bg-blue-600/20 text-blue-400 rounded-full hover:bg-blue-600 hover:text-white transition-all shrink-0 ml-4 active:scale-95">
+                <i data-lucide="volume-2" class="w-6 h-6"></i>
+            </button>
+        </div>
+    `).join('');
+
+    return `
+        <div class="w-full max-w-2xl p-4 text-center">
+            <div class="flex justify-between items-center mb-6 px-2">
+                <button onclick="navigate('modeSelect')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors shadow-xl">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <h2 class="text-2xl font-black text-blue-400 uppercase italic truncate px-4">${title}</h2>
+                <div class="w-12"></div>
+            </div>
+
+            <p class="text-gray-400 mb-6 font-black text-sm uppercase tracking-widest">Daftar Kosakata</p>
+
+            <div class="max-h-[55vh] overflow-y-auto custom-scrollbar pr-2 mb-8 text-left">
+                ${listHTML}
+            </div>
+
+            <button class="bg-blue-600 w-full py-5 rounded-3xl font-black text-lg shadow-neon-blue hover:bg-blue-500 flex justify-center items-center gap-3 uppercase tracking-widest transition-all active:scale-95" onclick="initFlashcards()">
+                <i data-lucide="layers" class="w-6 h-6"></i> Latihan dengan Flashcard
+            </button>
+        </div>
+    `;
+}
+
+function renderFlashcards() {
+    let title = state.selectedCat.split(' > ').pop();
+    let idx = state.flashcardIdx;
+    let v = state.currentDeck[idx];
+    let isFlipped = !!state.flippedStates[idx];
+    let rotationClass = isFlipped ? 'rotate-y-180' : '';
+    
+    let exampleHTML = v.example ? `
+        <div class="w-full bg-black/30 p-4 rounded-xl border border-white/5 mt-4 text-center">
+            <p class="text-sm font-bold text-blue-100 leading-tight mb-2">${v.example}</p>
+            <p class="text-xs italic text-gray-300 leading-tight">"${v.exTrans}"</p>
+        </div>
+    ` : '';
+
+    let cardHTML = `
+        <div class="w-full max-w-sm aspect-[3/4] cursor-pointer perspective-1000 mx-auto" onclick="toggleFlip(${idx})">
+            <div class="relative w-full h-full transition-transform duration-500 transform-style-3d shadow-neon-blue rounded-[2.5rem] ${rotationClass}">
+                <!-- Bagian Depan -->
+                <div class="absolute inset-0 bg-gray-800 rounded-[2.5rem] backface-hidden flex flex-col items-center justify-center p-6 text-center font-bold border-4 border-blue-500">
+                    <p class="text-blue-300 font-black text-5xl mb-6 tracking-tight leading-tight break-words px-2">${v.word}</p>
+                    <button onclick="event.stopPropagation(); speakJapanese('${v.word.replace(/'/g, "\\'")}');" class="mt-4 p-4 rounded-full bg-blue-600/20 hover:bg-blue-600 transition-all text-white active:scale-95">
+                        <i data-lucide="volume-2" class="w-8 h-8"></i>
+                    </button>
+                </div>
+                <!-- Bagian Belakang -->
+                <div class="absolute inset-0 bg-blue-900 rounded-[2.5rem] backface-hidden flex flex-col items-center justify-center p-6 text-center border-4 border-blue-400 overflow-hidden rotate-y-180">
+                    <p class="text-xs font-black uppercase text-blue-300 mb-2 w-full text-center tracking-widest">Arti</p>
+                    <p class="text-3xl font-black leading-tight w-full mb-4 text-center text-white">${v.translation}</p>
+                    ${exampleHTML}
+                </div>
+            </div>
+        </div>
+    `;
+
+    return `
+        <div class="w-full max-w-2xl p-4 flex flex-col items-center text-center">
+            <div class="w-full flex justify-between items-center mb-6">
+                <button onclick="navigate('vocabList')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 transition-colors">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <h2 class="text-2xl font-black text-blue-400 uppercase italic truncate px-4">${title}</h2>
+                <div class="w-12"></div> <!-- Spacer -->
+            </div>
+            
+            <p class="text-blue-400 font-black mb-4 animate-pulse-slow text-xs uppercase w-full text-center">Ketuk flashcard untuk melihat arti.</p>
+            
+            <div class="text-gray-400 font-black tracking-widest text-sm mb-6 bg-gray-800/50 px-6 py-2 rounded-full border border-white/5">
+                ${idx + 1} / ${state.currentDeck.length}
+            </div>
+
+            ${cardHTML}
+            
+            <div class="flex items-center gap-8 mt-12">
+                <button onclick="prevFlashcard()" class="p-4 bg-gray-800 text-blue-400 rounded-full hover:bg-blue-600 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-gray-800 disabled:hover:text-blue-400 shadow-xl" ${idx === 0 ? 'disabled' : ''}>
+                    <i data-lucide="chevron-left" class="w-8 h-8"></i>
+                </button>
+                <button onclick="nextFlashcard()" class="p-4 bg-gray-800 text-blue-400 rounded-full hover:bg-blue-600 hover:text-white transition-all disabled:opacity-20 disabled:cursor-not-allowed disabled:hover:bg-gray-800 disabled:hover:text-blue-400 shadow-xl" ${idx === state.currentDeck.length - 1 ? 'disabled' : ''}>
+                    <i data-lucide="chevron-right" class="w-8 h-8"></i>
+                </button>
+            </div>
+
+            <button class="mt-12 text-gray-500 font-black uppercase text-sm tracking-widest hover:text-white transition-colors" onclick="navigate('vocabList')">Selesai Belajar</button>
+        </div>
+    `;
+}
+
+// --- QUIZ LOGIC ---
+function initQuiz() {
+    const vocab = getVocabFromPath(state.selectedCat);
+    if (!Array.isArray(vocab) || vocab.length < 4) {
+        alert("Materi tidak cukup untuk kuis. (Minimal 4 kata)");
+        return;
+    }
+    const shuffledFullPool = shuffleArray([...vocab]);
+    const selectedVocab = shuffledFullPool.slice(0, 10);
+    const qs = selectedVocab.map(v => {
+        const others = vocab.filter(x => x.translation !== v.translation);
+        return { 
+            word: v.word, 
+            question: v.word, 
+            answer: v.translation, 
+            options: shuffleArray([...shuffleArray(others).slice(0, 3).map(o => o.translation), v.translation]) 
+        };
+    });
+    
+    state.quizState = { questions: qs, idx: 0, score: 0, lives: 3, history: [], finished: false };
+    navigate('quiz');
+}
+
+function handleQuizAnswer(selectedAns) {
+    let qState = state.quizState;
+    if(qState.finished) return;
+
+    const q = qState.questions[qState.idx];
+    const isCorrect = (selectedAns === q.answer);
+    
+    qState.history.push({ question: q, selectedAnswer: selectedAns, isCorrect: isCorrect });
+    
+    if (isCorrect) {
+        qState.score += 100;
+    } else {
+        qState.lives = Math.max(0, qState.lives - 1);
+    }
+    
+    // Tunggu sedikit sebelum lanjut
+    renderApp(); // Render status (maybe highlight answer, here we just skip to next after delay)
+    setTimeout(() => {
+        let nextIdx = qState.idx + 1;
+        if (qState.lives <= 0 || nextIdx >= qState.questions.length) {
+            qState.finished = true;
+            if (qState.lives > 0) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        } else {
+            qState.idx = nextIdx;
+        }
+        renderApp();
+    }, 600);
+}
+
+function renderQuiz() {
+    let qs = state.quizState;
+    if (qs.finished) {
+        return `
+            <div class="bg-gray-800 p-12 rounded-[3rem] border-2 border-blue-500 text-center max-w-sm w-full shadow-2xl">
+                <i data-lucide="trophy" class="w-20 h-20 text-yellow-400 mx-auto mb-6"></i>
+                <h2 class="text-4xl font-black mb-2 uppercase text-center w-full">KUIS SELESAI</h2>
+                <p class="text-6xl font-black text-blue-400 mb-12 text-center w-full">Skor: ${qs.score}</p>
+                <div class="flex flex-col gap-4">
+                    <button class="bg-blue-600 py-4 rounded-2xl font-black text-lg hover:bg-blue-500" onclick="initQuiz()">Ulang Kuis</button>
+                    <button class="bg-gray-700 py-4 rounded-2xl font-black text-lg hover:bg-gray-600" onclick="navigate('review')">Analisis Jawaban</button>
+                    <button class="text-gray-500 font-black mt-6" onclick="navigate('modeSelect')">Kembali</button>
+                </div>
+            </div>
+        `;
+    }
+
+    let q = qs.questions[qs.idx];
+    let heartsHTML = Array(3).fill(0).map((_, i) => `
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="${i < qs.lives ? '#ef4444' : 'transparent'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${i < qs.lives ? 'text-red-500' : 'text-gray-700'}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+    `).join('');
+
+    let progress = qs.questions.length > 0 ? (qs.idx / qs.questions.length) * 100 : 0;
+
+    let optionsHTML = q.options.map(opt => `
+        <button class="bg-gray-700 py-5 px-6 rounded-2xl font-bold transition-all shadow-md hover:bg-gray-600 active:scale-95" 
+                onclick="handleQuizAnswer('${opt.replace(/'/g, "\\'")}')">
+            ${opt}
+        </button>
+    `).join('');
+
+    return `
+        <div class="w-full max-w-2xl flex flex-col items-center p-4 text-center">
+            <div class="flex justify-between w-full mb-8 items-center px-6">
+                <button onclick="navigate('modeSelect')" class="p-2 bg-gray-800 rounded-full hover:bg-gray-700">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
+                <div class="font-black text-blue-400 italic text-2xl uppercase">Skor: ${qs.score}</div>
+                <div class="flex gap-1.5 bg-black/30 px-4 py-2 rounded-full border border-white/5">
+                    ${heartsHTML}
+                </div>
+            </div>
+            <div class="w-full h-4 bg-gray-800 rounded-full mb-14 overflow-hidden border border-white/5 p-1">
+                <div class="h-full bg-blue-500 rounded-full transition-all shadow-neon-blue" style="width: ${progress}%"></div>
+            </div>
+            
+            <div class="flex flex-col items-center w-full">
+                <div class="text-center bg-gray-800 text-blue-300 rounded-3xl p-10 w-full max-sm:p-6 max-w-sm mb-10 shadow-lg border-2 border-blue-500 relative transition-transform duration-300 transform scale-100">
+                    <p class="text-4xl font-black tracking-tighter cursor-pointer text-white" onclick="speakJapanese('${q.word}')">${q.word}</p>
+                    <button onclick="speakJapanese('${q.word}')" class="mt-4 p-3 rounded-full bg-blue-600/20 hover:bg-blue-600 transition-colors mx-auto flex items-center justify-center">
+                        <i data-lucide="volume-2" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
+                    ${optionsHTML}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderReview() {
+    let qs = state.quizState;
+    let listHTML = qs.history.map(item => `
+        <div class="p-8 rounded-[2rem] border-l-[12px] bg-gray-800 shadow-2xl ${item.isCorrect ? 'border-green-500' : 'border-red-500'}">
+            <div class="flex justify-between items-start mb-5">
+                <span class="text-5xl font-black tracking-tighter uppercase text-left w-full cursor-pointer hover:text-blue-300" onclick="speakJapanese('${item.question.word}')">${item.question.word}</span>
+                ${item.isCorrect ? '<i data-lucide="check-circle-2" class="w-10 h-10 text-green-500"></i>' : '<i data-lucide="x-circle" class="w-10 h-10 text-red-500"></i>'}
+            </div>
+            <p class="text-green-400 font-black text-2xl mb-2 italic uppercase text-left">Maksud: ${item.question.answer}</p>
+            ${!item.isCorrect ? `<p class="text-red-400 font-black mb-6 text-xl text-left uppercase">Jawaban Anda: ${item.selectedAnswer}</p>` : ''}
+        </div>
+    `).join('');
+
+    return `
+        <div class="w-full max-w-4xl p-6 text-center">
+            <div class="w-full flex justify-start mb-8">
+                <button onclick="navigate('quiz')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <h2 class="text-5xl font-black text-center mb-14 uppercase text-blue-400 w-full">Analisis Belajar</h2>
+            <div class="grid gap-6 max-h-[65vh] overflow-y-auto p-4 custom-scrollbar text-left">
+                ${listHTML}
+            </div>
+        </div>
+    `;
+}
+
+// --- GAME LOGIC ---
+
+function startMatchGame() {
+    navigate('gameMatch');
+    state.matchState.level = 1;
+    initMatchLevel(1);
+}
+
+function initMatchLevel(lvl) {
+    let ms = state.matchState;
+    ms.solved = []; ms.flipped = []; ms.previewing = true;
+    const pairCount = lvl === 1 ? 3 : lvl === 2 ? 4 : lvl === 3 ? 6 : 8;
+    const selected = shuffleArray(ALL_GAME_VOCAB).slice(0, pairCount);
+    const gameCards = [];
+    selected.forEach((v, i) => {
+        gameCards.push({ id: `a-${i}`, val: v.word, mId: i });
+        gameCards.push({ id: `b-${i}`, val: v.translation, mId: i });
+    });
+    ms.cards = shuffleArray(gameCards);
+    renderApp();
+    ms.timeoutId = setTimeout(() => {
+        state.matchState.previewing = false;
+        renderApp();
+    }, 2000 + (lvl * 400));
+}
+
+function handleMatchCardClick(cardId, mId) {
+    let ms = state.matchState;
+    if(ms.previewing || ms.flipped.length === 2 || ms.solved.includes(cardId) || ms.flipped.includes(cardId)) return;
+    
+    ms.flipped.push(cardId);
+    renderApp();
+
+    if(ms.flipped.length === 2) {
+        let firstCardId = ms.flipped[0];
+        let firstCard = ms.cards.find(x => x.id === firstCardId);
+        if(firstCard.mId === mId) {
+            ms.solved.push(firstCardId, cardId);
+            ms.flipped = [];
+            renderApp();
+        } else {
+            ms.timeoutId = setTimeout(() => {
+                state.matchState.flipped = [];
+                renderApp();
+            }, 800);
+        }
+    }
+}
+
+function renderGameMatch() {
+    let ms = state.matchState;
+    let cardsHTML = ms.cards.map(c => {
+        const isOpen = ms.previewing || ms.flipped.includes(c.id) || ms.solved.includes(c.id);
+        return `
+            <div class="w-[calc(33%-12px)] sm:w-[calc(25%-12px)] aspect-square relative perspective-1000 cursor-pointer" onclick="handleMatchCardClick('${c.id}', ${c.mId})">
+                <div class="w-full h-full transition-transform duration-500 transform-style-3d relative ${isOpen ? 'rotate-y-180' : ''}">
+                    <div class="absolute inset-0 bg-gray-800 rounded-2xl border-2 border-gray-700 flex items-center justify-center backface-hidden shadow-2xl">
+                        <i data-lucide="gamepad-2" class="opacity-10 w-12 h-12 text-white"></i>
+                    </div>
+                    <div class="absolute inset-0 bg-blue-600 rounded-2xl border-2 border-blue-400 flex items-center justify-center p-2 text-center rotate-y-180 backface-hidden shadow-neon-blue">
+                        <span class="text-[10px] sm:text-xs font-black leading-tight uppercase text-white break-words">${c.val}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    let winHTML = (ms.solved.length === ms.cards.length && ms.cards.length > 0) ? `
+        <div class="mt-12 text-center bg-gray-800 p-8 rounded-3xl border-2 border-yellow-500 shadow-2xl w-full">
+            <i data-lucide="trophy" class="w-12 h-12 text-yellow-400 mx-auto mb-3"></i>
+            <h3 class="text-2xl font-black mb-6 uppercase">Luar Biasa! Berhasil!</h3>
+            <button class="bg-green-600 px-12 py-3 rounded-full font-black shadow-lg hover:scale-105 transition-all w-full sm:w-auto" onclick="initMatchLevel(${ms.level + 1}); state.matchState.level++;">Level Berikutnya</button>
+        </div>
+    ` : '';
+
+    return `
+        <div class="flex flex-col items-center w-full max-w-4xl p-4 text-center">
+            <div class="flex justify-between w-full mb-8 items-center px-4">
+                <button onclick="navigate('categories')" class="p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-xl transition-all">
+                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                </button>
+                <h2 class="text-3xl font-black text-blue-400 italic uppercase">Memory Match</h2>
+            </div>
+            ${ms.previewing ? '<div class="mb-6 text-yellow-400 font-black flex items-center justify-center gap-3 text-lg uppercase tracking-widest"><i data-lucide="eye" class="w-6 h-6"></i> Hafalkan Posisi Kartu!</div>' : ''}
+            <div class="flex flex-wrap justify-center gap-3 w-full max-w-3xl mx-auto overflow-y-auto max-h-[60vh] p-2 custom-scrollbar">
+                ${cardsHTML}
+            </div>
+            ${winHTML}
+        </div>
+    `;
+}
+
+
+function startSpeedGame() {
+    state.speedState.score = 0;
+    state.speedState.isOver = false;
+    nextSpeedRound();
+    navigate('gameSpeed');
+}
+
+function nextSpeedRound() {
+    let ss = state.speedState;
+    if(ss.intervalId) clearInterval(ss.intervalId);
+    
+    const correct = ALL_GAME_VOCAB[Math.floor(Math.random() * ALL_GAME_VOCAB.length)];
+    const others = shuffleArray(ALL_GAME_VOCAB.filter(v => v.translation !== correct.translation)).slice(0, 3);
+    
+    ss.target = correct;
+    ss.options = shuffleArray([...others.map(o => o.translation), correct.translation]);
+    ss.timer = 8;
+    
+    ss.intervalId = setInterval(() => {
+        state.speedState.timer--;
+        if(state.speedState.timer <= 0) {
+            clearInterval(state.speedState.intervalId);
+            state.speedState.isOver = true;
+        }
+        renderApp();
+    }, 1000);
+}
+
+function handleSpeedSelect(ans) {
+    let ss = state.speedState;
+    if(ans === ss.target.translation) {
+        ss.score += 10;
+        nextSpeedRound();
+    } else {
+        clearInterval(ss.intervalId);
+        ss.isOver = true;
+    }
+    renderApp();
+}
+
+function renderGameSpeed() {
+    let ss = state.speedState;
+    if(ss.isOver) {
+        return `
+            <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-pink-500 shadow-2xl text-center">
+                <div class="text-center py-10">
+                    <i data-lucide="x-circle" class="w-16 h-16 text-red-500 mx-auto mb-6"></i>
+                    <h2 class="text-4xl font-black mb-2 uppercase tracking-tighter w-full text-center">WAKTU HABIS!</h2>
+                    <p class="text-gray-400 mb-10 font-bold text-2xl w-full text-center">Skor Akhir: ${ss.score}</p>
+                    <button class="bg-pink-600 px-12 py-4 rounded-full font-black mb-4 w-full shadow-lg hover:bg-pink-500 transition-colors" onclick="startSpeedGame()">Main Lagi</button>
+                    <button class="text-gray-500 font-bold mt-4" onclick="navigate('categories')">Keluar</button>
+                </div>
+            </div>
+        `;
+    }
+
+    let optionsHTML = ss.options.map(opt => `
+        <button class="bg-gray-700 py-5 rounded-2xl font-bold hover:bg-pink-600 transition-all border border-white/5 text-lg shadow-lg" onclick="handleSpeedSelect('${opt.replace(/'/g, "\\'")}')">${opt}</button>
+    `).join('');
+
+    return `
+        <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-pink-500 shadow-2xl text-center">
+            <div class="flex justify-between w-full mb-10 items-center px-2">
+                <div class="font-black text-3xl flex items-center gap-2 ${ss.timer < 4 ? 'text-red-500 animate-pulse' : 'text-pink-400'}">
+                    <i data-lucide="timer" class="w-7 h-7"></i> ${ss.timer}s
+                </div>
+                <div class="font-black text-2xl uppercase">Skor: ${ss.score}</div>
+            </div>
+            <div class="text-6xl font-black mb-14 uppercase tracking-tighter w-full text-center">${ss.target?.word}</div>
+            <div class="grid grid-cols-1 gap-4 w-full">
+                ${optionsHTML}
+            </div>
+        </div>
+    `;
+}
+
+function startScrambleGame() {
+    navigate('gameScramble');
+    state.scrambleState = { target: null, scrambled: [], selected: [], score: 0, lives: 3, isFinished: false };
+    initScrambleRound();
+}
+
+function initScrambleRound() {
+    let scr = state.scrambleState;
+    const validItems = ALL_GAME_VOCAB.filter(v => v.word.length > 1);
+    const item = validItems[Math.floor(Math.random() * validItems.length)];
+    if(!item) return navigate('categories');
+    
+    scr.target = item;
+    scr.scrambled = shuffleArray(item.word.split(''));
+    scr.selected = [];
+    renderApp();
+}
+
+function handleScrambleChar(char, originalIndex) {
+    let scr = state.scrambleState;
+    if(scr.selected.length >= scr.target.word.length) return;
+    
+    scr.selected.push({ char, idx: originalIndex });
+    
+    if(scr.selected.length === scr.target.word.length) {
+        const result = scr.selected.map(s => s.char).join('');
+        if(result === scr.target.word) {
+            scr.score += 20;
+            setTimeout(initScrambleRound, 800);
+        } else {
+            if(scr.lives > 1) {
+                scr.lives -= 1;
+                setTimeout(initScrambleRound, 1000);
+            } else {
+                scr.lives = 0;
+                scr.isFinished = true;
+            }
+        }
+    }
+    renderApp();
+}
+
+function handleRemoveScrambleChar(indexToRemove) {
+    state.scrambleState.selected.splice(indexToRemove, 1);
+    renderApp();
+}
+
+function renderGameScramble() {
+    let scr = state.scrambleState;
+    if(scr.isFinished) {
+        return `
+            <div class="text-center p-12 bg-gray-800 rounded-3xl border-4 border-yellow-600 shadow-2xl max-w-sm w-full">
+                <i data-lucide="trophy" class="w-16 h-16 text-yellow-400 mx-auto mb-4"></i>
+                <h2 class="text-3xl font-black mb-2 uppercase w-full text-center">GAME OVER</h2>
+                <p class="text-5xl font-black text-blue-400 mb-10 w-full text-center">${scr.score}</p>
+                <button class="bg-yellow-600 px-10 py-3 rounded-full font-black shadow-lg text-gray-900 w-full mb-4" onclick="startScrambleGame()">Main Lagi</button>
+                <button class="text-gray-500 font-bold w-full text-center" onclick="navigate('categories')">Keluar</button>
+            </div>
+        `;
+    }
+
+    let heartsHTML = Array(3).fill(0).map((_, i) => `
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="${i < scr.lives ? '#ef4444' : 'transparent'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${i < scr.lives ? 'text-red-500' : 'text-gray-700'}"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+    `).join('');
+
+    let selectedHTML = scr.selected.map((s, i) => `
+        <div onclick="handleRemoveScrambleChar(${i})" class="w-14 h-14 bg-yellow-600 rounded-2xl flex items-center justify-center font-black text-3xl shadow-xl cursor-pointer hover:bg-red-600 hover:scale-110 transition-all">${s.char}</div>
+    `).join('');
+
+    let scrambledHTML = scr.scrambled.map((char, i) => {
+        const isUsed = scr.selected.some(s => s.idx === i);
+        let classes = isUsed ? 'bg-gray-700 opacity-20 cursor-not-allowed' : 'bg-gray-600 hover:bg-yellow-500 hover:scale-110 active:scale-95 cursor-pointer';
+        return `
+            <button ${isUsed ? 'disabled' : ''} class="w-16 h-16 rounded-2xl font-black text-3xl transition-all shadow-xl ${classes}" onclick="handleScrambleChar('${char}', ${i})">${char}</button>
+        `;
+    }).join('');
+
+    return `
+        <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-yellow-500 shadow-2xl relative text-center">
+            <div class="flex justify-between w-full mb-8 items-center px-2">
+                <div class="font-black text-blue-400 text-2xl uppercase">Skor: ${scr.score}</div>
+                <div class="flex gap-1 bg-black/30 p-2 rounded-full border border-white/5">${heartsHTML}</div>
+            </div>
+            <h2 class="text-2xl font-black text-yellow-500 mb-2 uppercase tracking-tighter italic w-full text-center">Word Scramble</h2>
+            <p class="text-gray-400 mb-10 px-4 leading-relaxed w-full text-center">Susun Huruf Hiragana: <br/><span class="text-white font-black text-2xl italic">"${scr.target?.translation}"</span></p>
+            
+            <div class="flex flex-wrap gap-2 mb-4 h-auto min-h-[4rem] items-center justify-center border-b-4 border-gray-600 w-full p-2">
+                ${selectedHTML}
+            </div>
+            <p class="text-[10px] text-gray-500 mb-8 uppercase font-bold w-full text-center">*Klik huruf di atas untuk menghapus</p>
+            
+            <div class="flex flex-wrap justify-center gap-4 mb-10">
+                ${scrambledHTML}
+            </div>
+            <button class="text-gray-500 font-bold mt-4 w-full text-center" onclick="navigate('categories')">Keluar</button>
+        </div>
+    `;
+}
+
+// --- FUNGSI RENDER UTAMA ---
+function renderApp() {
+    let content = '';
+    switch(state.page) {
+        case 'home': content = renderHome(); break;
+        case 'about': content = renderAbout(); break;
+        case 'categories': content = renderCategories(); break;
+        case 'subcategories': content = renderSubcategories(); break;
+        case 'modeSelect': content = renderModeSelect(); break;
+        case 'vocabList': content = renderVocabList(); break;
+        case 'flashcards': content = renderFlashcards(); break;
+        case 'quiz': content = renderQuiz(); break;
+        case 'review': content = renderReview(); break;
+        case 'gameMatch': content = renderGameMatch(); break;
+        case 'gameSpeed': content = renderGameSpeed(); break;
+        case 'gameScramble': content = renderGameScramble(); break;
+    }
+    
+    // Langsung update konten tanpa animasi transparan
+    appDiv.innerHTML = content;
+    
+    // Reset style agar tetap terlihat (mencegah sisa animasi sebelumnya)
+    appDiv.style.opacity = '1';
+    appDiv.style.transform = 'scale(1)';
+    
+    // Render icon
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+// --- INISIALISASI ---
+document.addEventListener('DOMContentLoaded', () => {
+    renderApp();
+});
+
+</script>
+</body>
+</html>
