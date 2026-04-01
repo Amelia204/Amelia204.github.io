@@ -1669,44 +1669,25 @@ function startSpeedGame() {
     navigate('gameSpeed');
 }
 
-function renderGameSpeed() {
+function nextSpeedRound() {
     let ss = state.speedState;
-    if(ss.isOver) {
-        return `
-            <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-pink-500 shadow-2xl text-center">
-                <div class="text-center py-10 w-full">
-                    <i data-lucide="x-circle" class="w-16 h-16 text-red-500 mx-auto mb-6"></i>
-                    <h2 class="text-4xl font-black mb-2 uppercase tracking-tighter w-full text-center">WAKTU HABIS!</h2>
-                    <p class="text-gray-400 mb-10 font-bold text-2xl w-full text-center">Skor Akhir: ${ss.score}</p>
-                    <button class="bg-pink-600 px-12 py-4 rounded-full font-black mb-4 w-full shadow-lg hover:bg-pink-500 transition-colors" onclick="startSpeedGame()">Main Lagi</button>
-                    <button class="text-gray-500 font-bold mt-4 hover:text-white transition-colors" onclick="navigate('categories')">Keluar</button>
-                </div>
-            </div>
-        `;
-    }
-
-    let optionsHTML = ss.options.map(opt => `
-        <button class="bg-gray-700 py-5 rounded-2xl font-bold hover:bg-pink-600 transition-all border border-white/5 text-lg shadow-lg" onclick="handleSpeedSelect('${opt.replace(/'/g, "\\'")}')">${opt}</button>
-    `).join('');
-
-    return `
-        <div class="flex flex-col items-center w-full max-w-lg p-8 bg-gray-800 rounded-3xl border-2 border-pink-500 shadow-2xl text-center">
-            
-            <div class="flex justify-between w-full mb-10 items-center px-2">
-                <button onclick="navigate('categories')" class="p-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 shadow-xl transition-all">
-                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                </button>
-                <div class="font-black text-2xl flex items-center gap-2 ${ss.timer < 4 ? 'text-red-500 font-bold' : 'text-pink-400'}">
-                    <i data-lucide="timer" class="w-6 h-6"></i> ${ss.timer}s
-                </div>
-                <div class="font-black text-xl uppercase text-gray-300">Skor: ${ss.score}</div>
-            </div>
-            <div class="text-6xl font-black mb-14 uppercase tracking-tighter w-full text-center">${ss.target?.word}</div>
-            <div class="grid grid-cols-1 gap-4 w-full">
-                ${optionsHTML}
-            </div>
-        </div>
-    `;
+    if(ss.intervalId) clearInterval(ss.intervalId);
+    
+    const correct = ALL_GAME_VOCAB[Math.floor(Math.random() * ALL_GAME_VOCAB.length)];
+    const others = shuffleArray(ALL_GAME_VOCAB.filter(v => v.translation !== correct.translation)).slice(0, 3);
+    
+    ss.target = correct;
+    ss.options = shuffleArray([...others.map(o => o.translation), correct.translation]);
+    ss.timer = 8;
+    
+    ss.intervalId = setInterval(() => {
+        state.speedState.timer--;
+        if(state.speedState.timer <= 0) {
+            clearInterval(state.speedState.intervalId);
+            state.speedState.isOver = true;
+        }
+        renderApp();
+    }, 1000);
 }
 
 function handleSpeedSelect(ans) {
